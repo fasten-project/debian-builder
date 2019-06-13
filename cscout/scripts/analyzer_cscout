@@ -1,0 +1,35 @@
+#!/bin/bash
+
+NAME_T="$(cat $1 | grep 'Source: ' | cut -d ':' -f2)"
+VERSION_T="$(cat $1 | grep 'Version: ' | cut -d ':' -f2)"
+NAME="$(echo -e "${NAME_T}" | tr -d '[:space:]')"
+VERSION="$(echo -e "${VERSION_T}" | tr -d '[:space:]')"
+PKG="$NAME-$VERSION"
+CALLGRAPH="$PKG.txt"
+WARNING="$PKG.war"
+CSCOUT_ERROR="$PKG.cscout.err"
+CSMAKE_ERROR="$PKG.csmake.err"
+R_OPTION_PARAM="cgraph.txt"
+# run CSsout on package
+
+mkdir -p /var/run/csmake-spy
+cd $2
+MAKE=/usr/local/bin/csmake dpkg-buildpackage 2> csmake_error
+
+if cscout -R $R_OPTION_PARAM make.cs 2>cscout_error; then
+    if [[ -f "cscout_error" ]]; then
+        cp cscout_error /callgraphs/$WARNING
+    fi
+else
+    if [[ -f "cscout_error" ]]; then
+        cp cscout_error /callgraphs/$CSCOUT_ERROR && \
+        echo "$PKG: failed" >> /callgraphs/report
+    fi
+    if [[ -f "csmake_error" ]]; then
+        cp csmake_error /callgraphs/$CSMAKE_ERROR
+    fi
+fi
+if [[ -f "$R_OPTION_PARAM" ]]; then
+    cp $R_OPTION_PARAM /callgraphs/$CALLGRAPH && \
+        echo "$PKG: done" >> /callgraphs/report
+fi

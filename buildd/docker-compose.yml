@@ -1,0 +1,21 @@
+version: '3'
+services:
+    buildd:
+        image: buildd
+        hostname: buildd-net
+        privileged: true
+        ports:
+            - 5432:5432/tcp
+        volumes:
+            - ./init_scripts/init.sql:/docker-entrypoint-initdb.d/11_init.sql
+            - ./init_scripts/init.sh:/docker-entrypoint-initdb.d/12_init.sh
+            - ./init_scripts/seed.sql:/docker-entrypoint-initdb.d/13_seed.sql
+            - ./init_scripts/trigger.sh:/docker-entrypoint-initdb.d/14_trigger.sh
+            - ./init_scripts/sbuild_setup.sh:/docker-entrypoint-initdb.d/21_sbuild_setup.sh
+            - ./init_scripts/buildd.sh:/docker-entrypoint-initdb.d/22_buildd.sh
+            - ./init_scripts/start_ssh.sh:/docker-entrypoint-initdb.d/3_start_ssh.sh
+            - ./init_scripts/buildd_keys.sh:/docker-entrypoint-initdb.d/4_buildd_keys.sh
+            - ./init_scripts/daemon.sh:/docker-entrypoint-initdb.d/5_daemon.sh
+volumes:
+    wb-vol:
+        driver: local

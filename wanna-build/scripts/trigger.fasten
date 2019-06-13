@@ -1,0 +1,77 @@
+#!/bin/bash
+# vim:set et ts=4 sw=4 ft=sh ai:
+
+ARCHIVE='local'
+SUITE='stretch'
+ARCH='amd64'
+
+REPOSITORY='/usr/archives/debian/dists'
+
+. /srv/wanna-build/triggers/common
+
+exec >> /srv/wanna-build/logs/merge.$ARCHIVE.log 2>&1
+
+if [ -f /srv/wanna-build/NO-TRIGGERS -a -z "$1" ]
+then
+    echo Trigger for $ARCHIVE skipped due to NO-TRIGGERS, aborting. >&2
+    exit 0
+fi
+
+echo "`date`: Running trigger for $ARCHIVE ..."
+
+fetch() {
+	src="$1"
+	dest="$2"
+
+	if [ -f "$src" ]
+	then
+		mkdir -p "$dest"
+		cp "$src" "$dest"
+	fi
+}
+
+filter_out_nonfree() {
+    INPUT="$1"
+    OUTPUT="$2"
+
+    gunzip -c "$INPUT" | grep-dctrl -v -r -F Section 'non-free/.*' | gzip -c > "$OUTPUT"
+}
+
+main_fetch() {
+    ensure_lock
+    ensure_workdir
+
+    # Fetch Packages and Sources files.
+    fetch "$REPOSITORY/$SUITE/main/source/Sources.gz" "$ARCHIVE_BASE/archive/$SUITE/main/source/"
+    fetch "$REPOSITORY/$SUITE/main/binary-$ARCH/Packages.gz" "$ARCHIVE_BASE/archive/$SUITE/main/binary-$ARCH/"
+
+    # for arch in `get_architectures $SUITE`
+    # do
+        # fetch "$REPOSITORY/$suite/main/binary-$arch/Packages.gz" "$ARCHIVE_BASE/archive/$suite/main/binary-$arch/"
+    # done
+
+
+    SOURCES="Sources.$SUITE.incoming-filtered.gz"
+    filter_out_nonfree "$ARCHIVE_BASE/archive/$SUITE/main/source/Sources.gz" "$SOURCES"
+    PACKAGES="$ARCHIVE_BASE/archive/$SUITE/main/binary-%ARCH%/Packages.gz"
+    trigger_wb_update "$SUITE" "$ARCH" "$SOURCES" "$PACKAGES"
+
+    cleanup
+}
+
+main() {
+    set -eE
+    trap cleanup ERR TERM HUP INT QUIT
+
+
+    # save-database pre
+
+    main_fetch
+
+    # save-database post
+
+    # do_stats
+}
+
+main
+exit 0
