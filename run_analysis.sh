@@ -15,11 +15,11 @@ cd ../buildd
 docker build -t buildd .
 cd ..
 
-if [ "$TOOL" == "cscout" ]; then
+if [ "$TOOL" = "cscout" ]; then
     cd cscout
     docker build -t cscout .
     docker-compose up -d
-elif [ "$TOOL" == "svf" ]; then
+elif [ "$TOOL" = "svf" ]; then
     cd svf
     docker build -t svf .
     docker-compose up -d
