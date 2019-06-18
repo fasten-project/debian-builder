@@ -18,7 +18,7 @@ $external_commands = {
                         'post-build-commands' => [],
                         'chroot-setup-commands' => [],
                         'chroot-cleanup-commands' => [
-                            'analyzer %d %p',
+                            'starting-build-commands',
                             #'%SBUILD_SHELL'
                         ],
                       };
