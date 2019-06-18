@@ -26,9 +26,9 @@ $distribution = 'stable';
 $external_commands = {
                         'post-build-commands' => [],
                         'chroot-setup-commands' => [],
-                        'chroot-cleanup-commands' => [
+                        'starting-build-commands' => [
                             'analyzer %d %p',
-                            #'%SBUILD_SHELL'
+                            # '%SBUILD_SHELL'
                         ],
                       };
 
