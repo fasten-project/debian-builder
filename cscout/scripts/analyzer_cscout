@@ -14,7 +14,7 @@ R_OPTION_PARAM="cgraph.txt"
 
 mkdir -p /var/run/csmake-spy
 cd $2
-MAKE=/usr/local/bin/csmake dpkg-buildpackage 2> csmake_error
+MAKE=/usr/local/bin/csmake dpkg-buildpackage -b 2> csmake_error
 
 if cscout -R $R_OPTION_PARAM make.cs 2>cscout_error; then
     if [[ -f "cscout_error" ]]; then
