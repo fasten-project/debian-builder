@@ -8,5 +8,8 @@
 \c wannadb
 UPDATE packages
     SET state = 'Needs-Build';
+UPDATE packages
+    SET state = 'failed'
+    WHERE package = 'rootskel';
 
 -- vim:et

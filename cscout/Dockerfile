@@ -11,6 +11,7 @@ WORKDIR /root
 # INSTALL CScout
 RUN git clone https://github.com/dspinellis/cscout/
 WORKDIR cscout
+COPY ./csc_src/* src/
 RUN make && make install
 
 WORKDIR /root
