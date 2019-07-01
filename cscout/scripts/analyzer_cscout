@@ -9,7 +9,7 @@ CALLGRAPH="$PKG.txt"
 WARNING="$PKG.war"
 CSCOUT_ERROR="$PKG.cscout.err"
 CSMAKE_ERROR="$PKG.csmake.err"
-R_OPTION_PARAM="cgraph.txt"
+R_OPTION_PARAM="cgraph.txt?all=1"
 
 
 # run CSsout on package
@@ -31,8 +31,8 @@ else
         cp csmake_error /callgraphs/$PKG/$CSMAKE_ERROR
     fi
 fi
-if [[ -f "$R_OPTION_PARAM" ]]; then
-    cp $R_OPTION_PARAM /callgraphs/$PKG/$CALLGRAPH && \
+if [[ -f "cgraph.txt" ]]; then
+    cp cgraph.txt /callgraphs/$PKG/$CALLGRAPH && \
         echo "$PKG: done" >> /callgraphs/report
     cp ../$1 /callgraphs/$PKG/
     cp ../*.deb /callgraphs/$PKG/
