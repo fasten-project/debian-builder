@@ -18,7 +18,7 @@ $external_commands = {
                         'post-build-commands' => [],
                         'chroot-setup-commands' => [],
                         'starting-build-commands' => [
-                            'wrapper_analyzer %d %p 120m',
+                            'wrapper_analyzer %d %p 30m',
                             #'%SBUILD_SHELL'
                         ],
                       };
