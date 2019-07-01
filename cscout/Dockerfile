@@ -19,6 +19,8 @@ WORKDIR /root
 # SCRIPT TO RUN TOOLS
 COPY ./scripts/analyzer_cscout /usr/local/bin/analyzer
 RUN chmod 777 /usr/local/bin/analyzer
+COPY ./scripts/wrapper_analyzer /usr/local/bin/wrapper_analyzer
+RUN chmod 777 /usr/local/bin/wrapper_analyzer
 
 # DIRECTORY TO SAVE CALL-GRAPHS
 RUN mkdir -p /var/lib/buildd/callgraphs
