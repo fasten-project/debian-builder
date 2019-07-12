@@ -1,6 +1,6 @@
 FROM buildd
 
-ENV build_deps="git make vim wget python python-pip cmake g++ sudo cron"
+ENV build_deps="git make vim wget python python3 python-pip python3-pip cmake g++ sudo cron"
 
 # INSTALL PACKAGES
 RUN apt -yqq update && apt -yqq upgrade
@@ -13,6 +13,14 @@ RUN git clone https://github.com/dspinellis/cscout/
 WORKDIR cscout
 COPY ./csc_src/* src/
 RUN make && make install
+
+WORKDIR /root
+
+# INSTALL fcan
+RUN git clone https://github.com/fasten-project/canonical-call-graph-generator.git
+WORKDIR canonical-call-graph-generator/fcan
+RUN pip3 install setuptools
+RUN python3 setup.py install
 
 WORKDIR /root
 
