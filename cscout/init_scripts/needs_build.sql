@@ -10,6 +10,7 @@ UPDATE packages
     SET state = 'Needs-Build';
 UPDATE packages
     SET state = 'failed'
-    WHERE package = 'rootskel' OR package = 'rootskel-gtk';
+    WHERE package = 'rootskel' OR package = 'rootskel-gtk'
+        OR package = 'aiksaurus';
 
 -- vim:et
