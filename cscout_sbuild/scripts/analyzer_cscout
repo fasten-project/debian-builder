@@ -1,0 +1,63 @@
+#!/bin/bash
+
+NAME_T="$(cat $1 | grep 'Source: ' | cut -d ':' -f2)"
+VERSION_T="$(cat $1 | grep 'Version: ' | cut -d ':' -f2)"
+NAME="$(echo -e "${NAME_T}" | tr -d '[:space:]')"
+VERSION="$(echo -e "${VERSION_T}" | tr -d '[:space:]')"
+PKG="$NAME-$VERSION"
+CALLGRAPH="$PKG.txt"
+WARNING="$PKG.war"
+CSCOUT_ERROR="$PKG.cscout.err"
+CSMAKE_ERROR="$PKG.csmake.err"
+R_OPTION_PARAM="cgraph.txt?all=1"
+
+# run CSsout on package
+mkdir -p /callgraphs/$PKG
+mkdir -p /var/run/csmake-spy
+cd $2
+MAKE=/usr/local/bin/csmake dpkg-buildpackage -b 2> csmake_error
+
+
+# Install fcan dependencies
+pip3 install setuptools
+pip3 install pydpkg
+# Create file to filter out CScout nodes from canonical call graph
+echo "
+{
+    \"CScout\": {
+        \"forge\": \"\",
+        \"constraints\": \"\",
+        \"architecture\": \"\",
+        \"regex\": [
+            \"^/usr/local/include/cscout.*\"
+        ],
+        \"keep\": false
+    }
+}
+" > custom_deps.json
+
+if cscout -R $R_OPTION_PARAM make.cs 2>cscout_error; then
+    if [[ -f "cscout_error" ]]; then
+        cp cscout_error /callgraphs/$PKG/$WARNING
+    fi
+else
+    if [[ -f "cscout_error" ]]; then
+        cp cscout_error /callgraphs/$PKG/$CSCOUT_ERROR && \
+        echo "$PKG: failed" >> /callgraphs/report
+    fi
+    if [[ -f "csmake_error" ]]; then
+        cp csmake_error /callgraphs/$PKG/$CSMAKE_ERROR
+    fi
+fi
+if [[ -f "cgraph.txt" ]]; then
+    cp cgraph.txt /callgraphs/$PKG/$CALLGRAPH && \
+        echo "$PKG: done" >> /callgraphs/report
+    cp ../$1 /callgraphs/$PKG/
+    if ls ../*.deb 1> /dev/null 2>&1; then
+        cp ../*.deb /callgraphs/$PKG/
+    fi
+    if ls ../*.udeb 1> /dev/null 2>&1; then
+        cp ../*.udeb /callgraphs/$PKG/
+    fi
+    fcan -c custom_deps.json /callgraphs/$PKG/ 2> /callgraphs/$PKG/fcan.error
+fi

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+NAME_T="$(cat $1 | grep 'Source: ' | cut -d ':' -f2)"
+VERSION_T="$(cat $1 | grep 'Version: ' | cut -d ':' -f2)"
+NAME="$(echo -e "${NAME_T}" | tr -d '[:space:]')"
+VERSION="$(echo -e "${VERSION_T}" | tr -d '[:space:]')"
+PKG="$NAME-$VERSION"
+
+mkdir -p /callgraphs/$PKG
+
+timeout $3 analyzer $1 $2 2> error
+
+if [ $? = 124 ]; then
+    cp error /callgraphs/$PKG/error
+    echo "$PKG: timeout" >> /callgraphs/report
+fi
