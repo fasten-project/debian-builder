@@ -16,7 +16,7 @@ RUN sbuild-createchroot --include=eatmydata,ccache,gnupg stretch /srv/chroot/str
 WORKDIR /root
 
 # DIRECTORY TO SAVE STATS
-RUN mkdir -p /var/lib/fasten/stats
+RUN mkdir -p /var/log/sbuild/stats
 
 COPY ./config/sbuildrc /root/.sbuildrc
 COPY ./config/fstab /etc/schroot/sbuild/fstab
