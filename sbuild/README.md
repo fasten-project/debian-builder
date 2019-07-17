@@ -5,6 +5,13 @@ This is an unofficial Docker image of
 You can run sbuild as an Docker container to build Debian binary packages
 from Debian sources. It supports stretch and unstable.
 
+Build
+-----
+
+```
+docker build -t sbuild .
+```
+
 Run
 ---
 You should always pass the parameters `--cap-add SYS_ADMIN` and
