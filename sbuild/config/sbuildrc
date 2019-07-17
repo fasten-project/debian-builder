@@ -1,0 +1,5 @@
+# example for ~/.sbuildrc.  (Also see /etc/sbuild/sbuild.conf.)  -*- Perl -*-
+#
+# don't remove this, Perl needs it:
+1;
+
