@@ -10,14 +10,6 @@ cd $2
 HOME_DIR=$(pwd)
 
 install_deps() {
-    # Setup SVF
-    echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-7 main" >> \
-        /etc/apt/sources.list
-    echo "deb-src http://apt.llvm.org/stretch/ llvm-toolchain-stretch-7 main" >> \
-        /etc/apt/sources.list
-    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add -
-    apt -yqq update && apt -yqq upgrade
-    apt install -yqq llvm-7 clang-7
     ln -s /usr/bin/clang-7 /usr/bin/clang
     ln -s /usr/bin/llvm-link-7 /usr/bin/llvm-link
     ln -s /usr/bin/llvm-ar-7 /usr/bin/llvm-ar

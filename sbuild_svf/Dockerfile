@@ -10,7 +10,7 @@ ENV llvm_linker_etc="libfuzzer-7-dev lldb-7 lld-7 libc++-7-dev libc++abi-7-dev l
 RUN apt -yqq update && apt -yqq upgrade && \
     apt install -yqq $build_deps $svf_deps $llvm_deps $clang_deps $llvm_linker_etc
 
-    WORKDIR /root
+WORKDIR /root
 
 # INSTALL SVF
 ENV LLVM_SRC=/usr/local/installations/llvm-7.0.0.src

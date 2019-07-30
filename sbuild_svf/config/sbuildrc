@@ -16,7 +16,9 @@ $core_depends = [
                   'libssl-dev',
                   'libpcre2-dev',
                   'zip',
-                  'file'
+                  'file',
+                  'llvm-7',
+                  'clang-7'
                 ];
 
 $external_commands = {
