@@ -39,5 +39,5 @@ RUN chmod 777 /usr/local/bin/analyzer
 RUN mkdir -p /var/lib/buildd/callgraphs
 
 # CONFIG FILES
-COPY ./config/sbuildrc /root/,sbuildrc
+COPY ./config/sbuildrc /root/.sbuildrc
 COPY ./config/fstab /etc/schroot/sbuild/fstab
