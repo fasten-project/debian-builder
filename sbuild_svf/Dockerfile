@@ -20,16 +20,16 @@ RUN mkdir -p /usr/local/installations
 WORKDIR /usr/local/installations
 RUN wget http://llvm.org/releases/7.0.0/llvm-7.0.0.src.tar.xz && \
     tar xf llvm-7.0.0.src.tar.xz && \
-        git clone https://github.com/SVF-tools/SVF.git SVF
-        WORKDIR SVF
-        RUN mkdir Release-build
-        WORKDIR Release-build
-        RUN cmake ../ && make -j4
-        ENV SVF_HOME=/usr/local/installations/SVF/
-        ENV PATH=$SVF_HOME/Release-build/bin:$PATH
-        RUN pip install wllvm
+    git clone https://github.com/SVF-tools/SVF.git SVF
+WORKDIR SVF
+RUN mkdir Release-build
+WORKDIR Release-build
+RUN cmake ../ && make -j4
+ENV SVF_HOME=/usr/local/installations/SVF/
+ENV PATH=$SVF_HOME/Release-build/bin:$PATH
+RUN pip install wllvm
 
-        WORKDIR /root
+WORKDIR /root
 
 # SCRIPT TO RUN TOOLS
 COPY ./scripts/analyzer_svf /usr/local/bin/analyzer
@@ -39,5 +39,5 @@ RUN chmod 777 /usr/local/bin/analyzer
 RUN mkdir -p /var/lib/buildd/callgraphs
 
 # CONFIG FILES
-COPY ./config/sbuildrc /var/lib/buildd/.sbuildrc
+COPY ./config/sbuildrc /root/,sbuildrc
 COPY ./config/fstab /etc/schroot/sbuild/fstab
