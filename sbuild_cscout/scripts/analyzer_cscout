@@ -61,3 +61,5 @@ if [[ -f "cgraph.txt" ]]; then
     fi
     fcan -c custom_deps.json /callgraphs/$PKG/ 2> /callgraphs/$PKG/fcan.error
 fi
+
+rm -rf /var/run/csmake-spy

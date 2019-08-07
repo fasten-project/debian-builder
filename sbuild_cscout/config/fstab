@@ -12,3 +12,4 @@ tmpfs           /dev/shm        tmpfs   defaults        0       0
 /var/lib/sbuild/build         /build          none    rw,bind         0       0
 /var/log/sbuild/callgraphs    /callgraphs     none    rw,bind         0       0
 /usr/local                    /usr/local      none    rw,bind         0       0
+/root                         /root           none    rw,bind         0       0
