@@ -32,12 +32,25 @@ def create_dir(dir_name):
     return dir_name
 
 
+def find_error(err):
+    """Return the contents from an error log file if exists.
+    """
+    error_file = '/callgraph/{}'.format(err)
+    if os.path.isfile(error_file):
+        with open(error_file, 'r') as f:
+            return f.read()
+    return None
+
+
 class Analyser:
     """Produce a call graph from a Debian Package Release.
     """
 
-    def __init__(self, topic, producer, release):
+    def __init__(self, topic, error_topic, producer, release):
+        self.status = ''
+        self.error_msg = {}
         self.topic = topic
+        self.error_topic = error_topic
         self.producer = producer
         self.package = release['source']
         self.version = release['source_version']
@@ -155,11 +168,11 @@ class Analyser:
         """
         try:
             with open('/callgraph/report', 'r') as file:
-                status = file.read().strip()
+                self.status = file.read().strip()
         except FileNotFoundError:
             print("File not found: /callgraph/report")
             raise AnalyserError("File not found: /callgraph/report")
-        if status == 'done':
+        if self.status == 'done':
             print("{}: Call graph generated".format(
                 str(datetime.datetime.now()))
             )
@@ -169,13 +182,33 @@ class Analyser:
             )
             raise AnalyserError("An error occurred during cg generation")
 
+    def _save_error_messages(self, errors):
+        """Save error messages in self.error_msg dictionary.
+        """
+        self.error_msg[self.status] = {}
+        for error in errors:
+            self.error_msg[self.status][error] = find_error(error)
+
+    def _detect_error_messages(self):
+        """Detect which error occurred.
+        """
+        if self.status == 'failed-csmake':
+            self._save_error_messages(['csmake_error'])
+        elif self.status == 'failed-cscout':
+            self._save_error_messages(['csmake_warnings', 'cscout_error'])
+        elif self.status == 'failed-empty':
+            self._save_error_messages(['csmake_warnings', 'cscout_warnings'])
+        elif self.status == 'failed-fcan':
+            self._save_error_messages(['fcan_error'])
+
     def _produce_error_to_kafka(self):
         """Push error to kafka topic.
         """
         print("{}: Push error message to kafka topic".format(
             str(datetime.datetime.now()))
         )
-        self.producer.send(self.topic, json.dumps({'error': 1}))
+        self._detect_error_messages()
+        self.producer.send(self.error_topic, json.dumps(self.error_msg))
 
     def _produce_cg_to_kafka(self):
         """Push call graph to kafka topic.
@@ -191,7 +224,7 @@ def exit_with_error():
     sys.exit(1)
 
 
-def consume_from_kafka(in_topic, out_topic, servers, group):
+def consume_from_kafka(in_topic, out_topic, err_topic, servers, group):
     consumer = KafkaConsumer(
         in_topic,
         bootstrap_servers=servers.split(','),
@@ -209,7 +242,7 @@ def consume_from_kafka(in_topic, out_topic, servers, group):
         print("{}: Consuming {}".format(
             str(datetime.datetime.now()), release)
         )
-        analyser = Analyser(out_topic, producer, release)
+        analyser = Analyser(out_topic, err_topic, producer, release)
         analyser.analyse()
 
 
@@ -222,6 +255,11 @@ def get_parser():
         'out_topic',
         type=str,
         help="Kafka topic to write to."
+    )
+    parser.add_argument(
+        'err_topic',
+        type=str,
+        help="Kafka topic to write errors to."
     )
     parser.add_argument(
         'bootstrap_servers',
@@ -247,13 +285,15 @@ def main():
 
     in_topic = args.in_topic
     out_topic = args.out_topic
+    err_topic = args.err_topic
     bootstrap_servers = args.bootstrap_servers
     group = args.group
     sleep_time = args.sleep_time
 
     # Run forever
     while True:
-        consume_from_kafka(in_topic, out_topic, bootstrap_servers, group)
+        consume_from_kafka(in_topic, out_topic, err_topic, bootstrap_servers,
+                           group)
         time.sleep(sleep_time)
 
 
