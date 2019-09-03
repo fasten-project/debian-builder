@@ -1,9 +1,12 @@
 import os
 import json
 import argparse
+import datetime
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
 
+
+SOURCES = 'sources'
 
 def parse_release(release):
     source = release['source']
@@ -51,10 +54,15 @@ def run(in_topic, out_topic, servers, group, filename):
         bootstrap_servers=servers.split(','),
         value_serializer=lambda x: x.encode('utf-8')
     )
+    # Create default folder if not exists
+    if not os.path.exists(SOURCES):
+        os.makedirs(SOURCES)
     # Read the sources that has been already consumed
     if os.path.exists(filename):
         with open(filename, 'r') as f:
             sources = json.load(f)
+    else:
+        sources = {}
 
     # Read messages
     for message in consumer:
@@ -63,7 +71,7 @@ def run(in_topic, out_topic, servers, group, filename):
             str(datetime.datetime.now()), release)
         )
         # Check if source is in sources
-        if filter_sources(release, sources):
+        if filter_sources(sources, release):
             # Push release to topic
             producer.send(out_topic, json.dumps(release))
             # Save sources
@@ -99,6 +107,7 @@ def get_parser():
     parser.add_argument(
         '-f'
         '--filename',
+        dest='filename',
         help="File to save sources metadata.",
         default='sources.json'
     )
@@ -114,7 +123,7 @@ def main():
     bootstrap_servers = args.bootstrap_servers
     group = args.group
     sleep_time = args.sleep_time
-    filename = args.filename
+    filename = SOURCES + '/' + args.filename
 
     # Run forever
     while True:
