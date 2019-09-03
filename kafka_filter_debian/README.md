@@ -2,7 +2,7 @@
 
 This Docker image gets Debian packages releases events from a Kafka topic,
 filter them to keep only unique sources, and push them to another Kafka topic.
-The container runs indefinitely. It requires the options
+The container runs indefinitely. It requires the option
 `--net=host`.
 
 How to run
@@ -28,6 +28,6 @@ For example:
 
 ```bash
 docker run -it --net=host schaliasos/kafka_filter_debian \
-    -v /local/path/sources.json:/root/sources.json
+    -v /local/path:/root/sources
     cf_deb_release cf_fasten_cg localhost:9092 group-1 60 -f sources.json
 ```
