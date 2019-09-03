@@ -27,7 +27,7 @@ optional arguments:
 For example:
 
 ```bash
-docker run -it --net=host schaliasos/kafka_filter_debian \
-    -v /local/path:/root/sources
+docker run -it --net=host -v /local/path:/root/sources \
+    schaliasos/kafka_filter_debian \
     cf_deb_release cf_fasten_cg localhost:9092 group-1 60 -f sources.json
 ```
