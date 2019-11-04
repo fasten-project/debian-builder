@@ -10,9 +10,9 @@ Run
 ---
 
 ```
-mkdir -p /path/to/dir/callgraphs
-docker run -it --cap-add SYS_ADMIN -v /path/to/dir:/var/log/sbuild/ schaliasos/sbuild_cscout sbuild --apt-update --no-apt-upgrade --no-apt-distupgrade --batch --stats-dir=/var/log/sbuild/stats --dist=stretch --arch=amd64 PACKAGE
+mkdir -p callgraphs
+docker run -it --cap-add SYS_ADMIN -v $(pwd)/callgraphs:/var/log/sbuild/ schaliasos/sbuild_cscout sbuild --apt-update --no-apt-upgrade --no-apt-distupgrade --batch --stats-dir=/var/log/sbuild/stats --dist=stretch --arch=amd64 PACKAGE
 ```
 
 If CScout managed to produce a call graph then it dumped it at
-`/path/to/folder/callgraphs/PACKAGE-VERSION/can_cgraph.json`
+`callgraphs/PACKAGE-VERSION/pkg.json`
