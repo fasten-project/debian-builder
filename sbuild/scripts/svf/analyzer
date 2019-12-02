@@ -1,0 +1,164 @@
+#!/bin/bash
+# Parameters
+DSC=$1
+SRC=$2
+
+# Working directories
+PWD_PKG=$(pwd)
+cd $SRC
+PWD_SRC=$(pwd)
+cd ../
+
+# Global variables
+R_OPTION_PARAM="cgraph.txt?all=1&n=p&type=1"
+NAME=$(cat $DSC | grep '^Source: ')
+NAME=${NAME#"Source: "}
+NAME="$(echo -e "${NAME}" | tr -d '[:space:]')"
+VERSION=$(cat $DSC | grep '^Version: ')
+VERSION=${VERSION#"Version: "}
+VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')"
+PKG="$NAME-$VERSION"
+
+# Directories
+DEST="/callgraphs/"
+DEST_PKG=$DEST$PKG
+CALLGRAPHS=$DEST_PKG"/callgraphs"
+BINARIES_PER_PKG=$PWD_SRC/binaries_per_pkg
+CS_CALLGRAPHS=$PWD_SRC/cscout_callgraphs
+PACKAGES=$PWD_PKG/packages
+
+# File to save status
+REPORT=/callgraphs/report
+
+
+NAME_T="$(cat $1 | grep 'Source: ' | cut -d ':' -f2)"
+VERSION_T="$(cat $1 | grep 'Version: ' | cut -d ':' -f2)"
+NAME="$(echo -e "${NAME_T}" | tr -d '[:space:]')"
+VERSION="$(echo -e "${VERSION_T}" | tr -d '[:space:]')"
+PKG="$NAME-$VERSION"
+ERROR="$PKG.err"
+cd $2
+HOME_DIR=$(pwd)
+
+analysis() {
+    FILES=$@
+    extract_bc="extract-bc -b"
+
+    for i in $FILES; do
+        local name=$(basename $i)
+        local directory=$(dirname $i)
+        mkdir -p /callgraphs/$PKG/$directory
+        # extract LLVM bitcode
+        $extract_bc $i 2> error
+        STATUS=$?
+        if [ $STATUS != 0 ]; then
+            echo "$PKG: $i extract-bc error" >> /callgraphs/report && \
+                mv error /callgraphs/$PKG/$directory/$name.ext.err
+        elif [ -z "$i.bc" ]; then
+            echo "$PKG: $i no .bc file found" >> /callgraphs/report && \
+                if [ -z "error" ]; then
+                    mv error /callgraphs/$PKG/$directory/$name.ext.err
+                fi
+        else
+            # TODO Get warnings
+            wpa -fspta -dump-callgraph $i.bc 2> error
+            STATUS=$?
+            if [[ -f "callgraph_final.dot" ]]; then
+                echo "$PKG: $i done" >> /callgraphs/report && \
+                    mv callgraph_final.dot \
+                        /callgraphs/$PKG/$directory/$name.dot && \
+                    rm -f callgraph_initial.dot $i.bc
+            elif [[ -f "error" ]]; then
+                echo "$PKG: $i SVF failed" >> /callgraphs/report && \
+                    mv error /callgraphs/$PKG/$directory/$name.svf.err
+            fi
+        fi
+    done
+}
+
+run() {
+    # run SVF on package
+    CC=/usr/local/bin/wllvm dpkg-buildpackage -b 2>error
+    STATUS=$?
+    EXCECUTABLES=$(find -type f -executable -exec sh -c \
+        "file -i '{}' | grep -q 'x-executable; charset=binary'" \; -print)
+    ARCHIVES=$(find -type f -exec sh -c \
+        "file -i '{}' | grep -q 'x-archive; charset=binary'" \; -print)
+    SHAREDLIBS=$(find -type f -exec sh -c \
+        "file -i '{}' | grep -q 'x-sharedlib; charset=binary'" \; -print)
+    # Check if there are binaries
+    if [ -z "$EXCECUTABLES" ] && [ -z "$ARCHIVES" ] && \
+       [ -z "$SHAREDLIBS" ] && [ $STATUS == 0 ]; then
+        echo "$PKG: no binary files found" >> /callgraphs/report && \
+            exit 0
+    elif [[ -f "error" ]] && [ $STATUS != 0 ]; then
+        echo "$PKG: compilation failure" >> /callgraphs/report && \
+            mv error /callgraphs/$ERROR && \
+            rm -rf $PKG && \
+            exit 0
+    fi
+    # Create directory to save callgraphs and errors
+    mkdir -p /callgraphs/$PKG
+    if [ ! -z "$EXCECUTABLES" ]; then
+        analysis $EXCECUTABLES
+    fi
+    if [ ! -z "$ARCHIVES" ]; then
+        analysis $ARCHIVES
+    fi
+    if [ ! -z "$SHAREDLIBS" ]; then
+        analysis $SHAREDLIBS
+    fi
+}
+
+prepare_env() {
+    export LLVM_SRC=/usr/local/installations/llvm-7.0.0.src
+    export LLVM_OBJ=/usr/lib/llvm-7/build
+    export LLVM_DIR=/usr/lib/llvm-7/build
+    export SVF_HOME=/usr/local/installations/SVF/
+    export PATH=$SVF_HOME/Release-build/bin:$PATH
+    export LLVM_COMPILER=clang
+    # replace '=' and ':=' with '?=' in rules Makefile, in templates Makefiles
+    sed -i -E "s/CC [:]?=/CC ?=/g" debian/rules
+    sed -i -E "s/CC[:]?=/CC?=/g" debian/rules
+    for i in Makefile*; do
+        sed -i -E "s/CC [:]?=/CC ?=/g" $i 2> /dev/null
+        sed -i -E "s/CC[:]?=/CC?=/g" $i 2> /dev/null
+    done
+    # TODO add checks
+}
+
+build() {
+    CC=/usr/local/bin/wllvm dpkg-buildpackage -b 2>error
+    STATUS=$?
+    # TODO add checks
+}
+
+detect_binaries() {
+    printf "\n###Debug: binaries\n"
+    install_file=debian/$1
+    package_file=$2
+    prefix=$3
+    if [ -f $install_file ]; then
+        for path in $(cat $install_file); do
+            for f in $prefix$path; do
+                # Find target
+                if file -i $f | grep "charset=binary" | grep -q "x-sharedlib;\|executable;\|x-archive"; then
+                    echo "$f" >> $package_file
+                fi
+            done
+        done
+    fi
+}
+
+
+run_svf() {}
+
+main () {
+    prepare_env && build
+    # install_deps
+    # exports
+    # replace_cc
+    # run
+}
+
+exit 0
