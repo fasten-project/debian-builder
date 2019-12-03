@@ -21,33 +21,21 @@ PKG="$NAME-$VERSION"
 
 # Directories
 DEST="/callgraphs/"
-DEST_PKG=$DEST$PKG
-CALLGRAPHS=$DEST_PKG"/callgraphs"
-BINARIES_PER_PKG=$PWD_SRC/binaries_per_pkg
-CS_CALLGRAPHS=$PWD_SRC/cscout_callgraphs
-PACKAGES=$PWD_PKG/packages
-
-# File to save status
-REPORT=/callgraphs/report
-
-
-NAME_T="$(cat $1 | grep 'Source: ' | cut -d ':' -f2)"
-VERSION_T="$(cat $1 | grep 'Version: ' | cut -d ':' -f2)"
-NAME="$(echo -e "${NAME_T}" | tr -d '[:space:]')"
-VERSION="$(echo -e "${VERSION_T}" | tr -d '[:space:]')"
-PKG="$NAME-$VERSION"
-ERROR="$PKG.err"
-cd $2
-HOME_DIR=$(pwd)
+# $DEST_PKG/binary_package/{build.err,svf.err,fcan.err,status,fcg.json}
+DEST_PKG="$DEST$PKG/$VERSION"
+BINARIES_PER_PKG="$PWD_SRC/binaries_per_pkg"
+SVF_DIR="$PWD_SRC/svf_data"
+PACKAGES="$PWD_PKG/packages"
 
 BINARIES=''
 SYMLINKED=''
 TOTAL_BIN=''
 HAS_DEBS=0
-SVF_DIR="$HOME_DIR/svf_data"
 
+cd $SRC
 mkdir $BINARIES_PER_PKG
 mkdir $SVF_DIR
+mkdir $PACKAGES
 
 analysis() {
     FILES=$@
@@ -238,17 +226,29 @@ rebuild() {
 convert_dot_to_csv() {
     ls $SVF_DIR
     echo $TOTAL_BIN
+    # copy call graphs for symlinked
 }
 
 produce_callgraphs() {
-    # Find deb or udeb, create a dir, cp deb-dsc, produce fcallgraph, cp to results
-    echo "foo"
+    for pkg in $(ls $BINARIES_PER_PKG); do
+            mkdir -p $PACKAGES/$pkg
+            cp ../${pkg}_*.*deb $PACKAGES/$pkg
+            for bin in $(cat binaries_per_pkg/$pkg); do
+                    cat $SVF_DIR/$bin.csv >> $PACKAGES/$pkg/cgraph.txt
+            done
+    done
+    cp ../*.dsc $PACKAGES/*/$pkg.dsc
+    for d in $(ls $PACKAGE); do
+        if fcan $PACKAGES/$d; then
+            echo "COPY"
+        fi
+    done
 }
 
 main () {
     # They clean in rebuild some *.bc files some move them in a dir
     prepare_env && build && detect_binaries && run_svf && rebuild && \
-        detect_packages && convert_dot_to_csv && produce_callgraphs
+        detect_packages # && convert_dot_to_csv && produce_callgraphs
     # install_deps
     # exports
     # replace_cc
