@@ -43,6 +43,8 @@ cd $2
 HOME_DIR=$(pwd)
 
 BINARIES=''
+SYMLINKED=''
+TOTAL_BIN=''
 HAS_DEBS=0
 
 analysis() {
@@ -155,14 +157,20 @@ build() {
 
 detect_binaries() {
     printf "\n###Debug: binaries\n"
-    BINARIES=$(find -type f -executable -exec sh -c "file -i '{}' | \
-        grep -q '\(executable\|archive\|sharedlib\); charset=binary'" \
-        \; -print)
+    EXCECUTABLES=$(find -type f -executable -exec sh -c \
+        "file -i '{}' | grep -q 'x-executable; charset=binary'" \; -print)
+    ARCHIVES=$(find -type f -exec sh -c \
+        "file -i '{}' | grep -q 'x-archive; charset=binary'" \; -print)
+    SHAREDLIBS=$(find -type f -exec sh -c \
+        "file -i '{}' | grep -q 'x-sharedlib; charset=binary'" \; -print)
+    BINARIES="${EXCECUTABLES} ${ARCHIVES} ${SHAREDLIBS}"
+    SYMLINKED=$(find -type f -exec sh -c \
+        "file -i '{}' | grep -q 'x-sharedlib; charset=binary'" \; -print)
+    TOTAL_BIN="${$BINARIES} ${SYMLINKED}"
 }
 
 detect_packages() {
     # Keep only those inside the debian directory
-    # BINARIES=$(echo $BINARIES | grep -oh "\./debian\S*")
     printf "\n###Debug: detect_packages\n"
     # Number of packages
     NUM=$(awk '/^Package:/{a++}END{print a}' debian/control)
@@ -176,7 +184,7 @@ detect_packages() {
                 for path in $(cat $install_file | cut -d ' ' -f1); do
                     for f in $prefix$path; do
                         x=$(basename -- "$f")
-                        if [[ "$BINARIES" == *"$x"* ]]; then
+                        if [[ "$TOTAL_BIN" == *"$x"* ]]; then
                             # It may have duplicates
                             echo "$x" >> $BINARIES_PER_PKG/$n
                         fi
@@ -185,7 +193,7 @@ detect_packages() {
             fi
         done
     else
-        for bin in $BINARIES; do
+        for bin in $TOTAL_BIN; do
             x=$(basename -- "$bin")
             # It may have duplicates
             echo "$x" >> $BINARIES_PER_PKG/$NAMES
@@ -221,7 +229,8 @@ rebuild() {
 }
 
 main () {
-    prepare_env && build && detect_binaries && run_svf && rebuild && detect_packages
+    prepare_env && build && detect_binaries && run_svf && rebuild && \
+        detect_packages
     # install_deps
     # exports
     # replace_cc
