@@ -157,16 +157,16 @@ build() {
 
 detect_binaries() {
     printf "\n###Debug: binaries\n"
-    EXCECUTABLES=$(find -type f -executable -exec sh -c \
-        "file -i '{}' | grep -q 'x-executable; charset=binary'" \; -print)
+    EXECUTABLES=$(find -type f -executable -exec sh -c \
+        "file -i '{}' | grep -q 'executable; charset=binary'" \; -print)
     ARCHIVES=$(find -type f -exec sh -c \
-        "file -i '{}' | grep -q 'x-archive; charset=binary'" \; -print)
+        "file -i '{}' | grep -q 'archive; charset=binary'" \; -print)
     SHAREDLIBS=$(find -type f -exec sh -c \
-        "file -i '{}' | grep -q 'x-sharedlib; charset=binary'" \; -print)
-    BINARIES="${EXCECUTABLES} ${ARCHIVES} ${SHAREDLIBS}"
+        "file -i '{}' | grep -q 'sharedlib; charset=binary'" \; -print)
+    BINARIES="${EXECUTABLES} ${ARCHIVES} ${SHAREDLIBS}"
     SYMLINKED=$(find -type f -exec sh -c \
-        "file -i '{}' | grep -q 'x-sharedlib; charset=binary'" \; -print)
-    TOTAL_BIN="${$BINARIES} ${SYMLINKED}"
+        "file -i '{}' | grep -q 'symlink; charset=binary'" \; -print)
+    TOTAL_BIN="${BINARIES} ${SYMLINKED}"
 }
 
 detect_packages() {
@@ -185,6 +185,7 @@ detect_packages() {
                     for f in $prefix$path; do
                         x=$(basename -- "$f")
                         if [[ "$TOTAL_BIN" == *"$x"* ]]; then
+                            # We may need to look for hole path
                             # It may have duplicates
                             echo "$x" >> $BINARIES_PER_PKG/$n
                         fi
@@ -229,8 +230,7 @@ rebuild() {
 }
 
 main () {
-    prepare_env && build && detect_binaries && run_svf && rebuild && \
-        detect_packages
+    prepare_env && build && detect_binaries && run_svf
     # install_deps
     # exports
     # replace_cc
