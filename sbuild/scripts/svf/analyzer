@@ -27,6 +27,8 @@ BINARIES_PER_PKG=$PWD_SRC/binaries_per_pkg
 CS_CALLGRAPHS=$PWD_SRC/cscout_callgraphs
 PACKAGES=$PWD_PKG/packages
 
+mkdir $BINARIES_PER_PKG
+
 # File to save status
 REPORT=/callgraphs/report
 
@@ -39,6 +41,9 @@ PKG="$NAME-$VERSION"
 ERROR="$PKG.err"
 cd $2
 HOME_DIR=$(pwd)
+
+BINARIES=''
+HAS_DEBS=0
 
 analysis() {
     FILES=$@
@@ -117,6 +122,7 @@ prepare_env() {
     export SVF_HOME=/usr/local/installations/SVF/
     export PATH=$SVF_HOME/Release-build/bin:$PATH
     export LLVM_COMPILER=clang
+    export CFLAGS='-fPIC'
     # replace '=' and ':=' with '?=' in rules Makefile, in templates Makefiles
     sed -i -E "s/CC [:]?=/CC ?=/g" debian/rules
     sed -i -E "s/CC[:]?=/CC?=/g" debian/rules
@@ -124,41 +130,104 @@ prepare_env() {
         sed -i -E "s/CC [:]?=/CC ?=/g" $i 2> /dev/null
         sed -i -E "s/CC[:]?=/CC?=/g" $i 2> /dev/null
     done
-    # TODO add checks
+    ln -s /usr/bin/clang-7 /usr/bin/clang
+    ln -s /usr/bin/clang++-7 /usr/bin/clang++
+    ln -s /usr/bin/llvm-link-7 /usr/bin/llvm-link
+    ln -s /usr/local/bin/wllvm /usr/bin/wllvm
+    ln -s /usr/local/bin/wllvm++ /usr/bin/wllvm++
 }
 
 build() {
-    CC=/usr/local/bin/wllvm dpkg-buildpackage -b 2>error
+    CC=/usr/bin/wllvm CXX=/usr/bin/wllvm++ dpkg-buildpackage -b 2>error
     STATUS=$?
-    # TODO add checks
+    if [ $STATUS -ne 0 ]; then
+        HAS_DEBS=$STATUS
+        ./debian/rules clean && \
+            CC=/usr/bin/wllvm CXX=/usr/bin/wllvm++ ./configure --prefix=$(pwd)/debian/tmp
+        CC=/usr/bin/wllvm CXX=/usr/bin/wllvm++ make DESTDIR=$(pwd)/debian/tmp
+        STATUS=$?
+        if [ $STATUS -ne 0 ]; then
+            exit -1
+            # TODO add checks
+        fi
+    fi
 }
 
 detect_binaries() {
     printf "\n###Debug: binaries\n"
-    install_file=debian/$1
-    package_file=$2
-    prefix=$3
-    if [ -f $install_file ]; then
-        for path in $(cat $install_file); do
-            for f in $prefix$path; do
-                # Find target
-                if file -i $f | grep "charset=binary" | grep -q "x-sharedlib;\|executable;\|x-archive"; then
-                    echo "$f" >> $package_file
-                fi
-            done
+    BINARIES=$(find -type f -executable -exec sh -c "file -i '{}' | \
+        grep -q '\(executable\|archive\|sharedlib\); charset=binary'" \
+        \; -print)
+}
+
+detect_packages() {
+    # Keep only those inside the debian directory
+    # BINARIES=$(echo $BINARIES | grep -oh "\./debian\S*")
+    printf "\n###Debug: detect_packages\n"
+    # Number of packages
+    NUM=$(awk '/^Package:/{a++}END{print a}' debian/control)
+    # Names of packages
+    NAMES=$(grep "Package:" debian/control | cut -d ":" -f2 | awk '{$1=$1};1')
+    if [ "$NUM" -gt "1" ]; then
+        for n in $NAMES; do
+            prefix="./debian/tmp/"
+            install_file="debian/$n.install"
+            if [ -f $install_file ]; then
+                for path in $(cat $install_file | cut -d ' ' -f1); do
+                    for f in $prefix$path; do
+                        x=$(basename -- "$f")
+                        if [[ "$BINARIES" == *"$x"* ]]; then
+                            # It may have duplicates
+                            echo "$x" >> $BINARIES_PER_PKG/$n
+                        fi
+                    done
+                done
+            fi
+        done
+    else
+        for bin in $BINARIES; do
+            x=$(basename -- "$bin")
+            # It may have duplicates
+            echo "$x" >> $BINARIES_PER_PKG/$NAMES
         done
     fi
 }
 
+run_svf() {
+    printf "\n###Debug: run_svf\n"
+    for i in $BINARIES; do
+        extract-bc -b $i 2> bc_error
+        # TODO check if bc exists
+        wpa -fspta -dump-callgraph $i.bc 2> svf_error
+        # TODO check if svf worked
+        cp callgraph_final.dot $i.dot
+    done
+}
 
-run_svf() {}
+# If build failed we want to rebuild the project to get the .deb
+rebuild() {
+    echo "REBUILD"
+    echo "$HAS_DEBS"
+    echo "REBUILD"
+    if [ $HAS_DEBS -ne 0 ]; then
+        sed -i -E 's/CC \?=/CC =/g' debian/rules
+        sed -i -E 's/CC\?=/CC=/g' debian/rules
+        for i in Makefile*; do
+            sed -i -E 's/CC \?=/CC =/g' $i 2> /dev/null
+            sed -i -E 's/CC\?=/CC=/g' $i 2> /dev/null
+        done
+        dpkg-buildpackage -b
+    fi
+}
 
 main () {
-    prepare_env && build
+    prepare_env && build && detect_binaries && run_svf && rebuild && detect_packages
     # install_deps
     # exports
     # replace_cc
     # run
 }
+
+main
 
 exit 0
