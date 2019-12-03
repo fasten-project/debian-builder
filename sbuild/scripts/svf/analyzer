@@ -126,7 +126,7 @@ prepare_env() {
     export SVF_HOME=/usr/local/installations/SVF/
     export PATH=$SVF_HOME/Release-build/bin:$PATH
     export LLVM_COMPILER=clang
-    # export CFLAGS='-fPIC'
+    export CFLAGS='-g'
     # replace '=' and ':=' with '?=' in rules Makefile, in templates Makefiles
     sed -i -E "s/CC [:]?=/CC ?=/g" debian/rules
     sed -i -E "s/CC[:]?=/CC?=/g" debian/rules
