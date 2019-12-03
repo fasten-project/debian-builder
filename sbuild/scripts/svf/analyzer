@@ -27,8 +27,6 @@ BINARIES_PER_PKG=$PWD_SRC/binaries_per_pkg
 CS_CALLGRAPHS=$PWD_SRC/cscout_callgraphs
 PACKAGES=$PWD_PKG/packages
 
-mkdir $BINARIES_PER_PKG
-
 # File to save status
 REPORT=/callgraphs/report
 
@@ -46,6 +44,10 @@ BINARIES=''
 SYMLINKED=''
 TOTAL_BIN=''
 HAS_DEBS=0
+SVF_DIR="$HOME_DIR/svf_data"
+
+mkdir $BINARIES_PER_PKG
+mkdir $SVF_DIR
 
 analysis() {
     FILES=$@
@@ -124,7 +126,7 @@ prepare_env() {
     export SVF_HOME=/usr/local/installations/SVF/
     export PATH=$SVF_HOME/Release-build/bin:$PATH
     export LLVM_COMPILER=clang
-    export CFLAGS='-fPIC'
+    # export CFLAGS='-fPIC'
     # replace '=' and ':=' with '?=' in rules Makefile, in templates Makefiles
     sed -i -E "s/CC [:]?=/CC ?=/g" debian/rules
     sed -i -E "s/CC[:]?=/CC?=/g" debian/rules
@@ -164,8 +166,8 @@ detect_binaries() {
     SHAREDLIBS=$(find -type f -exec sh -c \
         "file -i '{}' | grep -q 'sharedlib; charset=binary'" \; -print)
     BINARIES="${EXECUTABLES} ${ARCHIVES} ${SHAREDLIBS}"
-    SYMLINKED=$(find -type f -exec sh -c \
-        "file -i '{}' | grep -q 'symlink; charset=binary'" \; -print)
+    SYMLINKED=$(find -type l -exec sh -c \
+        "file -i '{}' | grep -q 'charset=binary'" \; -print)
     TOTAL_BIN="${BINARIES} ${SYMLINKED}"
 }
 
@@ -209,7 +211,11 @@ run_svf() {
         # TODO check if bc exists
         wpa -fspta -dump-callgraph $i.bc 2> svf_error
         # TODO check if svf worked
-        cp callgraph_final.dot $i.dot
+        # If there are many FILES with same basename there may be a problem.
+        bname=$(basename $i)
+        cp callgraph_final.dot $SVF_DIR/$bname.dot
+        cp $i.bc $SVF_DIR/$bname.bc
+        cp $i.wpa $SVF_DIR/$bname.wpa
     done
 }
 
@@ -229,8 +235,20 @@ rebuild() {
     fi
 }
 
+convert_dot_to_csv() {
+    ls $SVF_DIR
+    echo $TOTAL_BIN
+}
+
+produce_callgraphs() {
+    # Find deb or udeb, create a dir, cp deb-dsc, produce fcallgraph, cp to results
+    echo "foo"
+}
+
 main () {
-    prepare_env && build && detect_binaries && run_svf
+    # They clean in rebuild some *.bc files some move them in a dir
+    prepare_env && build && detect_binaries && run_svf && rebuild && \
+        detect_packages && convert_dot_to_csv && produce_callgraphs
     # install_deps
     # exports
     # replace_cc
