@@ -1,4 +1,4 @@
-FROM schaliasos/sbuild
+FROM sbuild
 
 USER root
 
@@ -30,6 +30,20 @@ RUN cmake ../ && make -j4
 ENV SVF_HOME=/usr/local/installations/SVF/
 ENV PATH=$SVF_HOME/Release-build/bin:$PATH
 RUN pip install wllvm
+
+WORKDIR /root
+
+# Install llvm-func-info
+RUN git clone https://github.com/theosotr/llvm-func-info
+WORKDIR llvm-func-info/DumpFuncInfo
+RUN mkdir build
+WORKDIR build
+RUN cmake -DLLVM_BUILD_DIR=/usr/lib/llvm-7/build ..
+RUN make
+RUN sudo install FuncInfoPass/libLLVMFuncInfoPass.so /usr/local/bin/
+WORKDIR ../../
+RUN sudo install scripts/extract-edgelist.py /usr/local/bin/
+RUN sudo install scripts/extract-function-info.sh /usr/local/bin/
 
 WORKDIR /root
 

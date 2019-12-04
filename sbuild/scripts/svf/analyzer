@@ -53,6 +53,7 @@ prepare_env() {
         sed -i -E "s/CC[:]?=/CC?=/g" $i 2> /dev/null
     done
     ln -s /usr/bin/clang-7 /usr/bin/clang
+    ln -s /usr/bin/opt-7 /usr/bin/opt
     ln -s /usr/bin/clang++-7 /usr/bin/clang++
     ln -s /usr/bin/llvm-link-7 /usr/bin/llvm-link
     ln -s /usr/local/bin/wllvm /usr/bin/wllvm
@@ -124,14 +125,17 @@ detect_packages() {
 
 run_svf() {
     printf "\n###Debug: run_svf\n"
+    pip3 install setuptools
+    pip3 install pygraphviz
+    pip3 install networkx
     for i in $BINARIES; do
+        echo "Processing $i"
         extract-bc -b $i 2> bc_error
         # TODO check if bc exists
-        wpa -fspta -dump-callgraph $i.bc 2> svf_error
+        /usr/local/bin/extract-function-info.sh $i.bc /usr/local/bin/libLLVMFuncInfoPass.so > $i.txt
         # TODO check if svf worked
-        # If there are many FILES with same basename there may be a problem.
         bname=$(basename $i)
-        cp callgraph_final.dot $SVF_DIR/$bname.dot
+        cp $i.txt $SVF_DIR/$bname.txt
         cp $i.bc $SVF_DIR/$bname.bc
         cp $i.wpa $SVF_DIR/$bname.wpa
     done
@@ -153,12 +157,6 @@ rebuild() {
     fi
 }
 
-convert_dot_to_csv() {
-    ls $SVF_DIR
-    echo $TOTAL_BIN
-    # copy call graphs for symlinked
-}
-
 produce_callgraphs() {
     for pkg in $(ls $BINARIES_PER_PKG); do
             mkdir -p $PACKAGES/$pkg
@@ -178,7 +176,7 @@ produce_callgraphs() {
 main () {
     # They clean in rebuild some *.bc files some move them in a dir
     prepare_env && build && detect_binaries && run_svf && rebuild && \
-        detect_packages # && convert_dot_to_csv && produce_callgraphs
+        detect_packages # && produce_callgraphs
     # install_deps
     # exports
     # replace_cc

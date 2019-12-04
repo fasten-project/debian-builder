@@ -18,7 +18,12 @@ $core_depends = [
                   'zip',
                   'file',
                   'llvm-7',
-                  'clang-7'
+                  'clang-7',
+                  'vim',
+                  'python3',
+                  'python3-pip',
+                  'python3-dev',
+                  'graphviz-dev'
                 ];
 
 $external_commands = {
