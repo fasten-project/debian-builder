@@ -189,9 +189,10 @@ produce_callgraphs() {
     for d in $(ls $PACKAGES); do
         if fcan -c custom_deps.json $PACKAGES/$d; then
             mkdir -p $DEST_PKG/$d/
-            cp can_graph.json $DEST_PKG/$d/fcg.json
+            cp can_cgraph.json $DEST_PKG/$d/fcg.json
         fi
     done
+    cp $PWD_SRC/debian/changelog $DEST_PKG/changelog
 }
 
 main () {
