@@ -139,6 +139,12 @@ run_svf() {
         cp $i.bc $SVF_DIR/$bname.bc
         cp $i.wpa $SVF_DIR/$bname.wpa
     done
+    for i in $SYMLINKED; do
+        original=$(readlink -f $i)
+        original=$(basename -- "$original")
+        bname=$(basename $i)
+        cp $SVF_DIR/$original.txt $SVF_DIR/$bname.txt
+    done
 }
 
 # If build failed we want to rebuild the project to get the .deb
