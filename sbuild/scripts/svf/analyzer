@@ -164,25 +164,38 @@ rebuild() {
 }
 
 produce_callgraphs() {
+    echo "
+    {
+        \"CScout\": {
+            \"forge\": \"\",
+            \"constraints\": \"\",
+            \"architecture\": \"\",
+            \"regex\": [
+                \"^/usr/local/include/cscout.*\"
+            ],
+            \"keep\": false
+        }
+    }
+    " > custom_deps.json
     for pkg in $(ls $BINARIES_PER_PKG); do
             mkdir -p $PACKAGES/$pkg
-            cp ../${pkg}_*.*deb $PACKAGES/$pkg
+            cp $PWD_PKG/${pkg}_*.*deb $PACKAGES/$pkg
             for bin in $(cat binaries_per_pkg/$pkg); do
-                    cat $SVF_DIR/$bin.csv >> $PACKAGES/$pkg/cgraph.txt
+                    cat $SVF_DIR/$bin.txt >> $PACKAGES/$pkg/cgraph.txt
             done
+            cp $PWD_PKG/*.dsc $PACKAGES/$pkg/$pkg.dsc
+            cp $PWD_SRC/debian/changelog $PACKAGES/$pkg/$pkg.changelog
     done
-    cp ../*.dsc $PACKAGES/*/$pkg.dsc
-    for d in $(ls $PACKAGE); do
-        if fcan $PACKAGES/$d; then
+    for d in $(ls $PACKAGES); do
+        if fcan -c custom_deps.json $PACKAGES/$d; then
             echo "COPY"
         fi
     done
 }
 
 main () {
-    # They clean in rebuild some *.bc files some move them in a dir
     prepare_env && build && detect_binaries && run_svf && rebuild && \
-        detect_packages # && produce_callgraphs
+        detect_packages && produce_callgraphs
     # install_deps
     # exports
     # replace_cc
