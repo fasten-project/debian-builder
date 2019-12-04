@@ -17,7 +17,7 @@ NAME="$(echo -e "${NAME}" | tr -d '[:space:]')"
 VERSION=$(cat $DSC | grep '^Version: ')
 VERSION=${VERSION#"Version: "}
 VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')"
-PKG="$NAME-$VERSION"
+PKG="$NAME"
 
 # Directories
 DEST="/callgraphs/"
@@ -188,7 +188,8 @@ produce_callgraphs() {
     done
     for d in $(ls $PACKAGES); do
         if fcan -c custom_deps.json $PACKAGES/$d; then
-            echo "COPY"
+		mkdir -p $DEST_PKG/$d/
+		cp can_graph.json $DEST_PKG/$d/fcg.json
         fi
     done
 }
