@@ -176,6 +176,9 @@ rebuild() {
 }
 
 produce_callgraphs() {
+    pip3 install setuptools
+    pip3 install pygraphviz
+    pip3 install networkx
     echo "
     {
         \"CScout\": {
@@ -199,8 +202,8 @@ produce_callgraphs() {
             cp $PWD_SRC/debian/changelog $PACKAGES/$pkg/$pkg.changelog
     done
     for d in $(ls $PACKAGES); do
+	mkdir -p $DEST_PKG/$d/
         if fcan -c custom_deps.json $PACKAGES/$d 2> fcan_error; then
-            mkdir -p $DEST_PKG/$d/
             cp $PACKAGES/$d/can_cgraph.json $DEST_PKG/$d/fcg.json
             echo "fcan $d: success" >> $DEST_PKG/report
         else
