@@ -195,10 +195,6 @@ produce_callgraphs() {
 main () {
     prepare_env && build && detect_binaries && run_svf && rebuild && \
         detect_packages && produce_callgraphs
-    # install_deps
-    # exports
-    # replace_cc
-    # run
 }
 
 main
