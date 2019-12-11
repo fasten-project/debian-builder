@@ -7,10 +7,14 @@ ENV svf_deps="zlib1g-dev libncurses5-dev libssl-dev libpcre2-dev zip"
 ENV llvm_deps="libllvm-7-ocaml-dev libllvm7 llvm-7 llvm-7-dev llvm-7-doc llvm-7-examples llvm-7-runtime"
 ENV clang_deps="clang-7 clang-tools-7 clang-7-doc libclang-common-7-dev libclang-7-dev libclang1-7 clang-format-7 python-clang-7"
 ENV llvm_linker_etc="libfuzzer-7-dev lldb-7 lld-7 libc++-7-dev libc++abi-7-dev libomp-7-dev"
+ENV python_deps="python3 python3-pip python3-dev graphviz-dev"
 
 # INSTALL PACKAGES
 RUN apt -yqq update && apt -yqq upgrade && \
-    apt install -yqq $build_deps $svf_deps $llvm_deps $clang_deps $llvm_linker_etc
+    apt install -yqq $build_deps $svf_deps $llvm_deps $clang_deps $llvm_linker_etc $python_deps
+
+# Pip packages to install
+RUN pip3 install setuptools pygraphviz networkx
 
 WORKDIR /root
 
@@ -47,6 +51,7 @@ RUN sudo install scripts/extract-function-info.sh /usr/local/bin/
 
 WORKDIR /root
 
+RUN echo "echp"
 # Install fcan
 RUN wget https://raw.githubusercontent.com/fasten-project/canonical-call-graph-generator/develop/fcan/fcan/fcan.py && \
     cp fcan.py /usr/local/bin/fcan && chmod +x /usr/local/bin/fcan
