@@ -70,10 +70,12 @@ build() {
         CC=/usr/bin/wllvm CXX=/usr/bin/wllvm++ make DESTDIR=$(pwd)/debian/tmp
         STATUS=$?
         if [ $STATUS -ne 0 ]; then
+            cp error $DEST_PKG/build.err
+            echo "build: failed" >> $DEST_PKG/report
             exit -1
-            # TODO add checks
         fi
     fi
+    echo "build: success" >> $DEST_PKG/report
 }
 
 detect_binaries() {
@@ -128,9 +130,17 @@ run_svf() {
     for i in $BINARIES; do
         echo "Processing $i"
         extract-bc -b $i 2> bc_error
-        # TODO check if bc exists
+        if [ $? -ne 0 ]; then
+            echo "extract_bc $i: failed" >> $DEST_PKG/report
+            continue
+        fi
+        echo "extract_bc $i: success" >> $DEST_PKG/report
         /usr/local/bin/extract-function-info.sh $i.bc /usr/local/bin/libLLVMFuncInfoPass.so > $i.txt
-        # TODO check if svf worked
+        if [ $? -ne 0 ]; then
+            echo "svf $i: failed" >> $DEST_PKG/report
+            continue
+        fi
+        echo "svf $i: success" >> $DEST_PKG/report
         bname=$(basename $i)
         cp $i.txt $SVF_DIR/$bname.txt
         cp $i.bc $SVF_DIR/$bname.bc
@@ -156,7 +166,12 @@ rebuild() {
             sed -i -E 's/CC \?=/CC =/g' $i 2> /dev/null
             sed -i -E 's/CC\?=/CC=/g' $i 2> /dev/null
         done
-        dpkg-buildpackage -b
+        dpkg-buildpackage -b 2> error
+        if [ $? -ne 0 ]; then
+            cp error $DEST_PKG/rebuild.err
+            echo "rebuild: failed" >> $DEST_PKG/report
+            exit -1
+        fi
     fi
 }
 
@@ -184,9 +199,15 @@ produce_callgraphs() {
             cp $PWD_SRC/debian/changelog $PACKAGES/$pkg/$pkg.changelog
     done
     for d in $(ls $PACKAGES); do
-        if fcan -c custom_deps.json $PACKAGES/$d; then
+        if fcan -c custom_deps.json $PACKAGES/$d 2> fcan_error; then
             mkdir -p $DEST_PKG/$d/
             cp $PACKAGES/$d/can_cgraph.json $DEST_PKG/$d/fcg.json
+            echo "fcan $d: success" >> $DEST_PKG/report
+        else
+            # It will catch all the errors, such as when a packages
+            # does not have a .deb file
+            cp fcan_error $DEST_PKG/$d/fcan.err
+            echo "fcan $d: failed" >> $DEST_PKG/report
         fi
     done
     cp $PWD_SRC/debian/changelog $DEST_PKG/changelog
