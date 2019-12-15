@@ -17,12 +17,13 @@ NAME="$(echo -e "${NAME}" | tr -d '[:space:]')"
 VERSION=$(cat $DSC | grep '^Version: ')
 VERSION=${VERSION#"Version: "}
 VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')"
+ARCH="$(dpkg --print-architecture)"
 PKG="$NAME"
 
 # Directories
 DEST="/callgraphs/"
 # $DEST_PKG/binary_package/{build.err,svf.err,fcan.err,status,fcg.json}
-DEST_PKG="$DEST$PKG/$VERSION"
+DEST_PKG="$DEST$PKG/$VERSION/$ARCH"
 BINARIES_PER_PKG="$PWD_SRC/binaries_per_pkg"
 SVF_DIR="$PWD_SRC/svf_data"
 PACKAGES="$PWD_PKG/packages"
@@ -36,6 +37,7 @@ cd $SRC
 mkdir $BINARIES_PER_PKG
 mkdir $SVF_DIR
 mkdir $PACKAGES
+mkdir -p $DEST_PKG
 
 prepare_env() {
     export LLVM_SRC=/usr/local/installations/llvm-7.0.0.src
