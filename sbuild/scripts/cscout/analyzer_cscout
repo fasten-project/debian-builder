@@ -1,0 +1,237 @@
+#!/bin/bash
+#
+# analyzer DSC_FILE SOURCE_CODE_DIRECTORY
+# A sbuild analyzer to producing call graphs for Debian Packages using CScout.
+#
+# The analyzer can have the following outputs:
+#
+# status in         : /callgraph/report
+#   * FAILED, csmake
+#   * FAILED, cscout
+#   * FAILED, fcan
+#   * SUCCESS
+
+# Parameters
+DSC=$1
+SRC=$2
+MODE=$3
+
+# Working directories
+PWD_PKG=$(pwd)
+cd $SRC
+PWD_SRC=$(pwd)
+cd ../
+
+# Global variables
+R_OPTION_PARAM="cgraph.txt?all=1&n=p&type=1"
+NAME=$(cat $DSC | grep '^Source: ')
+NAME=${NAME#"Source: "}
+NAME="$(echo -e "${NAME}" | tr -d '[:space:]')"
+VERSION=$(cat $DSC | grep '^Version: ')
+VERSION=${VERSION#"Version: "}
+VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')"
+PKG="$NAME-$VERSION"
+
+# Directories
+DEST="/callgraphs/"
+DEST_PKG=$DEST$PKG
+CALLGRAPHS=$DEST_PKG"/callgraphs"
+BINARIES_PER_PKG=$PWD_SRC/binaries_per_pkg
+CS_CALLGRAPHS=$PWD_SRC/cscout_callgraphs
+PACKAGES=$PWD_PKG/packages
+
+# File to save status
+REPORT=/callgraphs/report
+
+# Initialize directories for CScout and results
+mkdir -p /tmp_dir
+mkdir -p $CALLGRAPHS
+mkdir -p $BINARIES_PER_PKG
+mkdir -p $PACKAGES
+
+cd $SRC
+
+build() {
+    printf "\n###Debug: build\n"
+    if ! dpkg-buildpackage -b 2> build_error; then
+        exit -1
+    fi
+}
+
+################################### RUN #######################################
+
+wllvm_build() {
+    printf "\n###Debug: wllvm_build\n"
+    if ! CC=/usr/local/bin/wllvm dpkg-buildpackage -b 2> wllvm_error; then
+        cp wllvm_error $DEST_PKG
+        echo "$PKG: FAILED, wllvm" >> $REPORT
+        exit -1
+    else
+        if [ -f "wllvm_error" ]; then
+            cp wllvm_error $DEST_PKG/wllvm_warn
+        fi
+    fi
+}
+
+################################## CSCOUT #####################################
+
+csmake_build() {
+    printf "\n###Debug: csmake\n"
+    if ! CSMAKEFLAGS='-T /tmp_dir' MAKE=/usr/local/bin/csmake dpkg-buildpackage -b 2> csmake_error; then
+        cp csmake_error $DEST_PKG
+        echo "$PKG: FAILED, csmake" >> $REPORT
+        exit -1
+    else
+        if [ -f "csmake_error" ]; then
+            cp csmake_error $DEST_PKG/csmake_warn
+        fi
+    fi
+}
+
+cs_merge_files() {
+    printf "\n###Debug: merge_cs_files\n"
+    cd cscout_projects
+    for p in $(ls *\#*); do
+        name=$(echo $p | sed 's/.*#//')
+        cat $p >> $name
+        rm -f $p
+    done
+    cd ../
+}
+
+cs_produce_callgraphs() {
+    printf "\n###Debug: produce_cs_callgraphs\n"
+    cd cscout_projects
+    for cs in $(ls); do
+        if [[ -f "$cs" && ! -s "$cs" ]]; then
+            printf "\n###Warning: $cs is empty\n"
+        fi
+        if cscout -R "$R_OPTION_PARAM" $cs 2>cscout_error; then
+            mv cgraph.txt $CS_CALLGRAPHS/$(basename $cs .cs).txt
+            if [ -f "cscout_error" ]; then
+                cp cscout_error $DEST_PKG/cscout_warn
+            fi
+        else
+            cp cscout_error $DEST_PKG
+            echo "$PKG: FAILED, cscout" >> $REPORT
+            exit -1
+        fi
+    done
+    cd ../
+}
+
+# .txt .deb changelog
+cs_make_pkgs_dirs() {
+    printf "\n###Debug: make_pkgs_dirs\n"
+    for p in $(ls $BINARIES_PER_PKG); do
+        mkdir -p $PACKAGES/$p
+        cp debian/changelog $PACKAGES/$p
+        for t in $(cat $BINARIES_PER_PKG/$p); do
+            if [ -f "cscout_callgraphs/$(basename $t).txt" ]; then
+                cat cscout_callgraphs/$(basename $t).txt >> $PACKAGES/$p/cgraph.txt
+            fi
+        done
+        if ! cp $PWD_PKG/$p"_"*.*deb $PACKAGES/$p 2> /dev/null; then
+            printf "\n###Warning: no deb or udeb file for $p\n"
+            rm -rf $PACKAGES/$p
+        fi
+        if [ ! -f "$PACKAGES/$p/cgraph.txt" ]; then
+            rm -rf $PACKAGES/$p
+            printf "\n###Warning: no .txt for $p\n"
+        fi
+    done
+}
+
+################################## GENERIC ####################################
+
+# Detect and save binaries per package, save files in $BINARIES_PER_PKG
+detect_binaries() {
+    printf "\n###Debug: binaries\n"
+    install_file=debian/$1
+    package_file=$2
+    prefix=$3
+    if [ -f $install_file ]; then
+        for path in $(cat $install_file); do
+            for f in $prefix$path; do
+                # Find target
+                if file -i $f | grep "charset=binary" | grep -q "x-sharedlib;\|executable;\|x-archive"; then
+                    echo "$f" >> $package_file
+                fi
+            done
+        done
+    fi
+}
+
+detect_packages() {
+    printf "\n###Debug: detect_packages\n"
+    # Number of packages
+    NUM=$(awk '/^Package:/{a++}END{print a}' debian/control)
+    # Names of packages
+    NAMES=$(grep "Package:" debian/control | cut -d ":" -f2 | awk '{$1=$1};1')
+    echo "$NUM"
+    echo "$NAMES"
+    # Detect and save binaries per package
+    if [ "$NUM" -gt "1" ]; then
+        for n in $NAMES; do
+            detect_binaries $n.install $BINARIES_PER_PKG/$n debian/tmp/
+        done
+    else
+        # Warning maybe we should detect files from debian/name/...
+        # TODO Get all files that produced by cscout
+        # just echo
+        detect_binaries install $BINARIES_PER_PKG/$NAMES
+    fi
+}
+
+run_fcan() {
+    printf "\n###Debug: run_fcan\n"
+    cd $PACKAGES
+    # Create file to filter out CScout nodes from canonical call graph
+    echo "
+    {
+        \"CScout\": {
+            \"forge\": \"\",
+            \"constraints\": \"\",
+            \"architecture\": \"\",
+            \"regex\": [
+                \"^/usr/local/include/cscout.*\"
+            ],
+            \"keep\": false
+        }
+    }
+    " > custom_deps.json
+    path=$(pwd)
+    for p in $(ls -d */); do
+        if ! fcan -c custom_deps.json $path/$p 2> fcan_error; then
+            cp fcan_error $DEST_PKG
+            echo "$PKG: FAILED, fcan" >> $REPORT
+            exit -1
+        else
+            if [ -f "fcan_error" ]; then
+                cp fcan_error $DEST_PKG/fcan_warn
+            fi
+        fi
+    done
+    cd ../
+}
+
+copy_callgraphs() {
+    printf "\n###Debug: copy_callgraphs\n"
+    cd $PACKAGES
+    for p in $(ls -d */); do
+        pkg=${p%/}
+        cp $p/can_cgraph.json $CALLGRAPHS/$pkg.json
+    done
+    cd ../
+}
+
+if [ $MODE = "cscout" ]; then
+    mkdir -p $CS_CALLGRAPHS
+    csmake_build && cs_merge_files && cs_produce_callgraphs && detect_packages && \
+        cs_make_pkgs_dirs && run_fcan && copy_callgraphs && \
+        echo "$PKG: SUCCESS" >> $REPORT
+elif [ $MODE = "svf" ]; then
+    wllvm_build && detect_packages
+fi
+
+exit
