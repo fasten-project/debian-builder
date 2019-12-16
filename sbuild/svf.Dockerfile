@@ -38,7 +38,7 @@ RUN pip install wllvm
 WORKDIR /root
 
 # Install llvm-func-info
-RUN git clone https://github.com/theosotr/llvm-func-info
+RUN git clone https://github.com/fasten-project/llvm-func-info.git
 WORKDIR llvm-func-info/DumpFuncInfo
 RUN mkdir build
 WORKDIR build
