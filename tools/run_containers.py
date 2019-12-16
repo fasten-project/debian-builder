@@ -15,16 +15,19 @@ def file_exists(path):
 
 
 def detect_report(volume, package):
-    a = os.walk(volume + '/' + package)
-    next(a)
-    next(a)
-    dirname, _, filenames = next(a)
-    if 'report' in filenames:
-        with open(dirname + '/report') as fp:
-            for line in fp:
-                if 'fcan' in line and 'success' in line:
-                    return True
-            return False
+    try:
+        a = os.walk(volume + '/' + package)
+        next(a)
+        next(a)
+        dirname, _, filenames = next(a)
+        if 'report' in filenames:
+            with open(dirname + '/report') as fp:
+                for line in fp:
+                    if 'fcan' in line and 'success' in line:
+                        return True
+                return False
+    except Exception as exc:
+        return False
 
 
 def mprint(ptype, pname, message, sname):
