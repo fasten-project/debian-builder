@@ -66,17 +66,21 @@ build() {
     CC=/usr/bin/wllvm CXX=/usr/bin/wllvm++ dpkg-buildpackage -b 2>error
     STATUS=$?
     if [ $STATUS -ne 0 ]; then
+        echo "build_heuristic: begin" >> $DEST_PKG/report
+        cp error $DEST_PKG/old_build.err
         HAS_DEBS=$STATUS
         ./debian/rules clean && \
-            CC=/usr/bin/wllvm CXX=/usr/bin/wllvm++ ./configure --prefix=$(pwd)/debian/tmp
-        CC=/usr/bin/wllvm CXX=/usr/bin/wllvm++ make DESTDIR=$(pwd)/debian/tmp
+            CC=/usr/bin/wllvm CXX=/usr/bin/wllvm++ ./configure --prefix=$(pwd)/debian/tmp 2> config
+        CC=/usr/bin/wllvm CXX=/usr/bin/wllvm++ make DESTDIR=$(pwd)/debian/tmp 2> error
         STATUS=$?
         if [ $STATUS -ne 0 ]; then
+            cp config $DEST_PKG/config.err
             cp error $DEST_PKG/build.err
             echo "build: failed" >> $DEST_PKG/report
             exit -1
         fi
     fi
+    cp error $DEST_PKG/build.war
     echo "build: success" >> $DEST_PKG/report
 }
 
@@ -92,6 +96,10 @@ detect_binaries() {
     SYMLINKED=$(find -type l -exec sh -c \
         "file -i '{}' | grep -q 'charset=binary'" \; -print)
     TOTAL_BIN="${BINARIES} ${SYMLINKED}"
+    if [ ${#TOTAL_BIN} -le 3 ]; then
+        echo "detect_binaries: failed" >> $DEST_PKG/report
+        exit -1
+    fi
 }
 
 detect_packages() {
@@ -134,12 +142,14 @@ run_svf() {
         extract-bc -b $i 2> bc_error
         if [ $? -ne 0 ]; then
             echo "extract_bc $i: failed" >> $DEST_PKG/report
+            cp bc_error $DEST_PKG/$i.bc.err
             continue
         fi
         echo "extract_bc $i: success" >> $DEST_PKG/report
-        /usr/local/bin/extract-function-info.sh $i.bc /usr/local/bin/libLLVMFuncInfoPass.so > $i.txt
+        /usr/local/bin/extract-function-info.sh $i.bc /usr/local/bin/libLLVMFuncInfoPass.so > $i.txt 2> error
         if [ $? -ne 0 ]; then
             echo "svf $i: failed" >> $DEST_PKG/report
+            cp error $DEST_PKG/$i.svf.err
             continue
         fi
         echo "svf $i: success" >> $DEST_PKG/report
