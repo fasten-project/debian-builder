@@ -215,7 +215,7 @@ produce_callgraphs() {
     done
     for d in $(ls $PACKAGES); do
 	mkdir -p $DEST_PKG/$d/
-        if fcan -c custom_deps.json -s $PKG $PACKAGES/$d 2> fcan_error; then
+        if fcan -c custom_deps.json -s $PKG -t svf $PACKAGES/$d 2> fcan_error; then
             cp $PACKAGES/$d/can_cgraph.json $DEST_PKG/$d/fcg.json
             echo "fcan $d: success" >> $DEST_PKG/report
         else
