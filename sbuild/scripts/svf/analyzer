@@ -120,7 +120,7 @@ detect_packages() {
             install_file="debian/$n.install"
             if [ -f $install_file ]; then
                 for path in $(cat $install_file | cut -d ' ' -f1); do
-                    for f in $prefix$path; do
+                    for f in $(find $prefix$path -type f); do
                         x=$(basename -- "$f")
                         if [[ "$TOTAL_BIN" == *"$x"* ]]; then
                             # We may need to look for hole path
@@ -171,7 +171,9 @@ run_svf() {
         original=$(readlink -f $i)
         original=$(basename -- "$original")
         bname=$(basename $i)
-        cp $SVF_DIR/$original.txt $SVF_DIR/$bname.txt
+        if [ -f "$SVF_DIR/$original.txt" ]; then
+            cp $SVF_DIR/$original.txt $SVF_DIR/$bname.txt
+        fi
     done
 }
 
@@ -219,13 +221,18 @@ produce_callgraphs() {
                 continue
             fi
             for bin in $(cat binaries_per_pkg/$pkg); do
-                    cat $SVF_DIR/$bin.txt >> $PACKAGES/$pkg/cgraph.txt
+                cat $SVF_DIR/$bin.txt >> $PACKAGES/$pkg/cgraph.txt
             done
+            if [ ! -s "$PACKAGES/$pkg/cgraph.txt" ]; then
+                echo "produce_callgraph: $pkg: failed: empty" >> $DEST_PKG/report
+                rm -rf $PACKAGES/$pkg
+                continue
+            fi
             cp $PWD_PKG/*.dsc $PACKAGES/$pkg/$pkg.dsc
             cp $PWD_SRC/debian/changelog $PACKAGES/$pkg/$pkg.changelog
     done
     for d in $(ls $PACKAGES); do
-	mkdir -p $DEST_PKG/$d/
+        mkdir -p $DEST_PKG/$d/
         if fcan -c custom_deps.json -s $PKG -a svf::andersen $PACKAGES/$d 2> fcan_error; then
             cp $PACKAGES/$d/can_cgraph.json $DEST_PKG/$d/fcg.json
             echo "produce_callgraph: $d: success" >> $DEST_PKG/report
