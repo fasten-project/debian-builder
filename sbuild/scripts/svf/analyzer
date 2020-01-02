@@ -63,10 +63,12 @@ prepare_env() {
 }
 
 build() {
+    printf "\n###Debug: build\n"
+    echo "tool: svf" >> $DEST_PKG/report
     CC=/usr/bin/wllvm CXX=/usr/bin/wllvm++ dpkg-buildpackage -b 2>error
     STATUS=$?
     if [ $STATUS -ne 0 ]; then
-        echo "build_heuristic: begin" >> $DEST_PKG/report
+        echo "#build_heuristic: true" >> $DEST_PKG/report
         cp error $DEST_PKG/old_build.err
         HAS_DEBS=$STATUS
         ./debian/rules clean && \
@@ -96,10 +98,13 @@ detect_binaries() {
     SYMLINKED=$(find -type l -exec sh -c \
         "file -i '{}' | grep -q 'charset=binary'" \; -print)
     TOTAL_BIN="${BINARIES} ${SYMLINKED}"
-    if [ ${#TOTAL_BIN} -le 3 ]; then
+    count=$(wc -w <<< "$TOTAL_BIN")
+    if [ "$count" -eq "0" ]; then
         echo "detect_binaries: failed" >> $DEST_PKG/report
         exit -1
     fi
+    echo "detect_binaries: success" >> $DEST_PKG/report
+    echo "#binaries: $count" >> $DEST_PKG/report
 }
 
 detect_packages() {
@@ -133,6 +138,9 @@ detect_packages() {
             echo "$x" >> $BINARIES_PER_PKG/$NAMES
         done
     fi
+    echo "#detect_packages_number: $NUM" >> $DEST_PKG/report
+    temp_names=$(tr '\n' ' ' <<< $NAMES)
+    echo "detect_packages: $temp_names" >> $DEST_PKG/report
 }
 
 run_svf() {
@@ -141,18 +149,19 @@ run_svf() {
         echo "Processing $i"
         extract-bc -b $i 2> bc_error
         if [ $? -ne 0 ]; then
-            echo "extract_bc $i: failed" >> $DEST_PKG/report
+            echo "analysis: $i: failed: extract_bc" >> $DEST_PKG/report
             cp bc_error $DEST_PKG/$i.bc.err
             continue
         fi
-        echo "extract_bc $i: success" >> $DEST_PKG/report
+        echo "#extract_bc $i: success" >> $DEST_PKG/report
         /usr/local/bin/extract-function-info.sh $i.bc /usr/local/bin/libLLVMFuncInfoPass.so > $i.txt 2> error
         if [ $? -ne 0 ]; then
-            echo "svf $i: failed" >> $DEST_PKG/report
+            echo "analysis: $i: failed: svf" >> $DEST_PKG/report
             cp error $DEST_PKG/$i.svf.err
             continue
         fi
-        echo "svf $i: success" >> $DEST_PKG/report
+        echo "#svf $i: success" >> $DEST_PKG/report
+        echo "analysis: $i: success" >> $DEST_PKG/report
         bname=$(basename $i)
         cp $i.txt $SVF_DIR/$bname.txt
         cp $i.bc $SVF_DIR/$bname.bc
@@ -166,11 +175,8 @@ run_svf() {
     done
 }
 
-# If build failed we want to rebuild the project to get the .deb
+# If build failed we want to rebuild the project to get the .deb files
 rebuild() {
-    echo "REBUILD"
-    echo "$HAS_DEBS"
-    echo "REBUILD"
     if [ $HAS_DEBS -ne 0 ]; then
         sed -i -E 's/CC \?=/CC =/g' debian/rules
         sed -i -E 's/CC\?=/CC=/g' debian/rules
@@ -181,10 +187,11 @@ rebuild() {
         dpkg-buildpackage -b 2> error
         if [ $? -ne 0 ]; then
             cp error $DEST_PKG/rebuild.err
-            echo "rebuild: failed" >> $DEST_PKG/report
+            echo "produce_debs: failed" >> $DEST_PKG/report
             exit -1
         fi
     fi
+    echo "produce_debs: success" >> $DEST_PKG/report
 }
 
 produce_callgraphs() {
@@ -206,7 +213,11 @@ produce_callgraphs() {
     " > custom_deps.json
     for pkg in $(ls $BINARIES_PER_PKG); do
             mkdir -p $PACKAGES/$pkg
-            cp $PWD_PKG/${pkg}_*.*deb $PACKAGES/$pkg
+            if ! cp $PWD_PKG/${pkg}_*.*deb $PACKAGES/$pkg ; then
+                echo "produce_callgraph: $pkg: failed: missing deb" >> $DEST_PKG/report
+                rm -rf $PACKAGES/$pkg
+                continue
+            fi
             for bin in $(cat binaries_per_pkg/$pkg); do
                     cat $SVF_DIR/$bin.txt >> $PACKAGES/$pkg/cgraph.txt
             done
@@ -217,12 +228,12 @@ produce_callgraphs() {
 	mkdir -p $DEST_PKG/$d/
         if fcan -c custom_deps.json -s $PKG -a svf::andersen $PACKAGES/$d 2> fcan_error; then
             cp $PACKAGES/$d/can_cgraph.json $DEST_PKG/$d/fcg.json
-            echo "fcan $d: success" >> $DEST_PKG/report
+            echo "produce_callgraph: $d: success" >> $DEST_PKG/report
         else
             # It will catch all the errors, such as when a packages
             # does not have a .deb file
             cp fcan_error $DEST_PKG/$d/fcan.err
-            echo "fcan $d: failed" >> $DEST_PKG/report
+            echo "produce_callgraph: $d: failed": fcan >> $DEST_PKG/report
         fi
     done
     cp $PWD_SRC/debian/changelog $DEST_PKG/changelog
