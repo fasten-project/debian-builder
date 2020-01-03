@@ -34,9 +34,9 @@ TOTAL_BIN=''
 HAS_DEBS=0
 
 cd $SRC
-mkdir $BINARIES_PER_PKG
-mkdir $SVF_DIR
-mkdir $PACKAGES
+mkdir -p $BINARIES_PER_PKG
+mkdir -p $SVF_DIR
+mkdir -p $PACKAGES
 mkdir -p $DEST_PKG
 
 prepare_env() {
