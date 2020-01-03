@@ -23,7 +23,7 @@ Run
 
 You should always pass the parameters `--privileged` and
 `-v /path/to/folder:/callgraphs` where the first path is an absolute path
-in the host machine where the call graphs and logs will be saved.
+in the host machine in which the call graphs and logs will be saved.
 
 
 * Run sbuild on `PACKAGE` from `buster` release.
