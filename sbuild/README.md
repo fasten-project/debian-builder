@@ -1,38 +1,64 @@
-# sbuild Docker Image
+# sbuild Docker Images
 
 This is an unofficial Docker image of
 [sbuild](https://tracker.debian.org/pkg/sbuild).
-You can run sbuild as an Docker container to build Debian binary packages
-from Debian sources. It supports stretch and unstable.
+You can run sbuild as a Docker container to build Debian binary packages
+from Debian sources. It supports the releases; buster, stretch and unstable.
+Moreover, two extensions of the sbuild image are provided to generate call
+graphs. One using [svf](https://svf-tools.github.io/SVF/),
+and the other one using
+[CScout](https://www2.dmst.aueb.gr/dds/cscout/doc/mancscout.html).
 
 Build
 -----
 
 ```
 docker build -t sbuild .
+docker build -t sbuild_svf -f svf.Dockerfile .
+docker build -t sbuild_cscout -f cscout.Dockerfile .
 ```
 
 Run
 ---
-You should always pass the parameters `--cap-add SYS_ADMIN` and
-`-v /path/to/folder:/var/log/sbuild` where the first path is an absolute path
-in your file system where logs will be saved.
 
-* Interactive container with bash
+You should always pass the parameters `--privileged` and
+`-v /path/to/folder:/callgraphs` where the first path is an absolute path
+in the host machine where the call graphs and logs will be saved.
 
-```
-docker run -it --cap-add SYS_ADMIN -v /path/to/folder:/var/log/sbuild sbuild bash
-```
 
-* Run sbuild on PACKAGE using stretch
+* Run sbuild on `PACKAGE` from `buster` release.
 
 ```
-docker run -it --cap-add SYS_ADMIN -v /path/to/dir:/var/log/sbuild/ sbuild sbuild --apt-update --no-apt-upgrade --no-apt-distupgrade --batch --stats-dir=/var/log/sbuild/stats --dist=stretch --arch=amd64 PACKAGE
+docker run -it --rm --privileged -v /path/to/dir:/callgraphs sbuild \
+    sbuild --apt-update --no-apt-upgrade --no-apt-distupgrade --batch \
+    --stats-dir=/var/log/sbuild/stats --dist=buster --arch=amd64 PACKAGE
 ```
 
-* Run sbuild on PACKAGE using unstable and save the stdout in the logs
-directory.
+* The exact same command can be used with `sbuild_cscout` and `sbuild_svf`.
+
+Logs
+----
+
+The logs from `sbuild_svf` and `sbuild_cscout` have the following format.
+__All lines that start with `#` are comments.__
 
 ```
-docker run -it --cap-add SYS_ADMIN -v /path/to/dir:/var/log/sbuild/ sbuild sbuild --apt-update --no-apt-upgrade --no-apt-distupgrade --batch --stats-dir=/var/log/sbuild/stats --dist=unstable --arch=amd64 PACKAGE && cp *.build /var/log/sbuild/
+tool: [svf|cscout]
+build: [success|failed]
+detect_binaries: [success|failed]
+# Per binary
+analysis: <binary>: failed: [extract_bc|svf]
+analysis: <binary>: success
+produce_debs: [success|failed]
+detect_packages: pkg1 pkg2 ...
+# Per package
+produce_callgraph: <package>: failed: [missing deb|empty|fcan]
+produce_callgraph: <package>: success
 ```
+
+Images in Dockerhub
+-------------------
+
+* **sbuild**: `schaliasos/sbuild`
+* **sbuild_svf**:
+* **sbuild_cscout**:
