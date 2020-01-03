@@ -30,6 +30,7 @@ PACKAGES="$PWD_PKG/packages"
 
 BINARIES=''
 SYMLINKED=''
+USED_BINARIES=''
 TOTAL_BIN=''
 HAS_DEBS=0
 
@@ -127,6 +128,7 @@ detect_packages() {
                             # We may need to look for hole path
                             # It may have duplicates
                             echo "$x" >> $BINARIES_PER_PKG/$n
+                            USED_BINARIES="${USED_BINARIES} ${x}"
                         fi
                     done
                 done
@@ -137,8 +139,20 @@ detect_packages() {
             x=$(basename -- "$bin")
             # It may have duplicates
             echo "$x" >> $BINARIES_PER_PKG/$NAMES
+            USED_BINARIES="${USED_BINARIES} ${x}"
         done
     fi
+    # Add symlinked
+    for i in $SYMLINKED; do
+        b=$(basename -- "$i")
+        if [[ $USED_BINARIES == *"$b"* ]]; then
+            original=$(readlink -f $i)
+            original=$(basename -- "$original")
+            USED_BINARIES="${USED_BINARIES} ${original}"
+        fi
+    done
+    # Remove duplicates
+    USED_BINARIES=$(echo "$USED_BINARIES" | awk '{for (i=1;i<=NF;i++) if (!USED_BINARIES[$i]++) printf("%s%s",$i,FS)}{printf("\n")}')
     echo "#detect_packages_number: $NUM" >> $DEST_PKG/report
     temp_names=$(tr '\n' ' ' <<< $NAMES)
     echo "detect_packages: $temp_names" >> $DEST_PKG/report
@@ -148,6 +162,16 @@ run_svf() {
     printf "\n###Debug: run_svf\n"
     for i in $BINARIES; do
         echo "Processing $i"
+        # When we know the debs from the first build we can skip
+        # binaries that aren't used in debs
+        if [ $HAS_DEBS -eq 0 ]; then
+            x=$(basename -- "$i")
+            if [[ ! $USED_BINARIES == *"$x"* ]]; then
+                echo "Skip $i"
+                echo "#analysis: $i: not in USED_BINARIES" >> $DEST_PKG/report
+                continue
+            fi
+        fi
         extract-bc -b $i 2> bc_error
         if [ $? -ne 0 ]; then
             echo "analysis: $i: failed: extract_bc" >> $DEST_PKG/report
@@ -180,19 +204,17 @@ run_svf() {
 
 # If build failed we want to rebuild the project to get the .deb files
 rebuild() {
-    if [ $HAS_DEBS -ne 0 ]; then
-        sed -i -E 's/CC \?=/CC =/g' debian/rules
-        sed -i -E 's/CC\?=/CC=/g' debian/rules
-        for i in Makefile*; do
-            sed -i -E 's/CC \?=/CC =/g' $i 2> /dev/null
-            sed -i -E 's/CC\?=/CC=/g' $i 2> /dev/null
-        done
-        dpkg-buildpackage -b 2> error
-        if [ $? -ne 0 ]; then
-            cp error $DEST_PKG/rebuild.err
-            echo "produce_debs: failed" >> $DEST_PKG/report
-            exit -1
-        fi
+    sed -i -E 's/CC \?=/CC =/g' debian/rules
+    sed -i -E 's/CC\?=/CC=/g' debian/rules
+    for i in Makefile*; do
+        sed -i -E 's/CC \?=/CC =/g' $i 2> /dev/null
+        sed -i -E 's/CC\?=/CC=/g' $i 2> /dev/null
+    done
+    dpkg-buildpackage -b 2> error
+    if [ $? -ne 0 ]; then
+        cp error $DEST_PKG/rebuild.err
+        echo "produce_debs: failed" >> $DEST_PKG/report
+        exit -1
     fi
     echo "produce_debs: success" >> $DEST_PKG/report
 }
@@ -249,8 +271,17 @@ produce_callgraphs() {
 }
 
 main () {
-    prepare_env && build && detect_binaries && run_svf && rebuild && \
-        detect_packages && produce_callgraphs
+    prepare_env && build && detect_binaries
+    # Optimization
+    # Use info from detect_packages before run_svf 
+    # if the packages were generated in the first build
+    if [ $HAS_DEBS -ne 0 ]; then
+        run_svf && rebuild && detect_packages 
+    else
+        echo "produce_debs: success" >> $DEST_PKG/report
+        detect_packages && run_svf
+    fi
+    produce_callgraphs
 }
 
 main
