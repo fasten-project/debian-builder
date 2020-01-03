@@ -87,7 +87,7 @@ build() {
 }
 
 detect_binaries() {
-    printf "\n###Debug: binaries\n"
+    printf "\n###Debug: detect_binaries\n"
     EXECUTABLES=$(find -type f -executable -exec sh -c \
         "file -i '{}' | grep -q 'executable; charset=binary'" \; -print)
     ARCHIVES=$(find -type f -exec sh -c \
