@@ -118,6 +118,7 @@ detect_packages() {
         for n in $NAMES; do
             prefix="./debian/tmp/"
             install_file="debian/$n.install"
+            touch $BINARIES_PER_PKG/$n
             if [ -f $install_file ]; then
                 for path in $(cat $install_file | cut -d ' ' -f1); do
                     for f in $(find $prefix$path -type f); do
@@ -220,6 +221,7 @@ produce_callgraphs() {
                 rm -rf $PACKAGES/$pkg
                 continue
             fi
+            touch $PACKAGES/$pkg/cgraph.txt
             for bin in $(cat binaries_per_pkg/$pkg); do
                 cat $SVF_DIR/$bin.txt >> $PACKAGES/$pkg/cgraph.txt
             done
