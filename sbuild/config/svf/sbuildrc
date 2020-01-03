@@ -30,8 +30,8 @@ $external_commands = {
                         'post-build-commands' => [],
                         'chroot-setup-commands' => [],
                         'starting-build-commands' => [
-                            #'analyzer %d %p',
-                           '%SBUILD_SHELL'
+                            'analyzer %d %p',
+                            #'%SBUILD_SHELL'
                         ]
                       };
 
