@@ -3,6 +3,8 @@
 DSC=$1
 SRC=$2
 
+DSC=$(ls *.dsc)
+
 # Working directories
 PWD_PKG=$(pwd)
 cd $SRC
