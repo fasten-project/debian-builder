@@ -56,7 +56,9 @@ class Analyser:
         self.version = release['source_version']
         self.dist = release['release']
         self.arch = release['arch']
-        self.dir_name = '{}-{}'.format(self.package, self.version)
+        self.dir_name = '{}-{}-{}-{}'.format(
+                self.package, self.dist, self.arch, self.version
+        )
         self.url = snap_url.format(self.package, self.version)
         self.urls = []
 
@@ -64,8 +66,8 @@ class Analyser:
         try:
             self._download_files()
             self._run_sbuild()
-            self._check_analysis_result()
-            self._produce_cg_to_kafka()
+            #self._check_analysis_result()
+            #self._produce_cg_to_kafka()
         except AnalyserError:
             self._produce_error_to_kafka()
 
