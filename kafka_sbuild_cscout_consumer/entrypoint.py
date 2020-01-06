@@ -48,7 +48,7 @@ class Analyser:
         self.dir_name = '{}-{}-{}-{}'.format(
                 self.package, self.dist, self.arch, self.version
         )
-        self.callgraph_dir = '{}/{}/{}/{}/{}'.format(
+        self.callgraph_dir = '{}/{}/{}/{}/{}/'.format(
             'callgraphs', self.package, self.dist, self.version, self.arch
         )
         self.url = snap_url.format(self.package, self.version)
@@ -59,15 +59,17 @@ class Analyser:
                 dist: self.dist,
                 arch: self.arch,
                 phase:'', 
+                group:'', 
                 message:'', 
                 datetime:''
         }
+        self.binary_pkgs = []
 
     def analyse(self):
         try:
             self._download_files()
             self._run_sbuild()
-            #self._check_analysis_result()
+            self._check_analysis_result()
             #self._produce_cg_to_kafka()
         except AnalyserError:
             self._produce_error_to_kafka()
@@ -185,20 +187,50 @@ class Analyser:
         an exception
         """
         try:
-            with open('/callgraph/report', 'r') as file:
-                self.status = file.read().strip()
+            with open(self.callgraph_dir + 'report', 'r') as fd:
+                for line in fd:
+                    log = line.split(': ')
+                if log[0] == 'build':
+                    if log[1] == 'failed':
+                        self.error_msg['phase'] = 'build'
+                        self.error_msg['message'] = 'Build failed'
+                        raise AnalyserError('Build failed')
+                elif log[0] == 'detect_binaries':
+                    if log[1] == 'failed':
+                        self.error_msg['phase'] = 'detect_binaries'
+                        self.error_msg['message'] = 'No binaries found'
+                        raise AnalyserError('No binaries found')
+                elif log[0] == 'analysis':
+                    if log[2] == 'failed':
+                        self.error_msg['phase'] = 'analysis'
+                        self.error_msg['group'] = log[3]
+                        self.error_msg['message'] = log[1]
+                        self._produce_error_to_kafka()
+                elif log[0] == 'produce_debs':
+                    if log[1] == 'failed':
+                        self.error_msg['phase'] = 'detect_binaries'
+                        self.error_msg['message'] = 'Produce debian packages failed'
+                        raise AnalyserError('Produce debian packages failed')
+                elif log[0] == 'detect_packages':
+                    self.binary_pkgs = log[1].split(' ')
+                elif log[0] == 'produce_callgraph':
+                    if log[2] == 'failed':
+                        self.error_msg['phase'] = 'produce_callgraph'
+                        self.error_msg['group'] = log[3]
+                        self.error_msg['message'] = log[1]
+                        self._produce_error_to_kafka()
+                    if log[2] == 'success':
+                        self.status = 'done'
         except FileNotFoundError:
-            print("File not found: /callgraph/report")
-            raise AnalyserError("File not found: /callgraph/report")
+            message = "File not found: " + self.callgraph_dir + " report"
+            print(message)
+            self.error_msg['phase'] = 'report'
+            self.error_msg['message'] = message
+            raise AnalyserError(message)
         if self.status == 'done':
             print("{}: Call graph generated".format(
                 str(datetime.datetime.now()))
             )
-        else:
-            print("{}: An error occurred during call graph generation".format(
-                str(datetime.datetime.now()))
-            )
-            raise AnalyserError("An error occurred during cg generation")
 
     def _produce_error_to_kafka(self):
         """Push error to kafka topic.
