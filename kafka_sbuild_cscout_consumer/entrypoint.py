@@ -32,23 +32,12 @@ def create_dir(dir_name):
     return dir_name
 
 
-def find_error(err):
-    """Return the contents from an error log file if exists.
-    """
-    error_file = '/callgraph/{}'.format(err)
-    if os.path.isfile(error_file):
-        with open(error_file, 'r') as f:
-            return f.read()
-    return None
-
-
 class Analyser:
     """Produce a call graph from a Debian Package Release.
     """
 
     def __init__(self, topic, error_topic, producer, release):
         self.status = ''
-        self.error_msg = {}
         self.topic = topic
         self.error_topic = error_topic
         self.producer = producer
@@ -56,16 +45,27 @@ class Analyser:
         self.version = release['source_version']
         self.dist = release['release']
         self.arch = release['arch']
-        self.dir_name = '{}-{}'.format(self.package, self.version)
+        self.dir_name = '{}-{}-{}-{}'.format(
+                self.package, self.dist, self.arch, self.version
+        )
         self.url = snap_url.format(self.package, self.version)
         self.urls = []
+        self.error_msg = {
+                package: self.package,
+                version: self.version,
+                dist: self.dist,
+                arch: self.arch,
+                phase:'', 
+                message:'', 
+                datetime:''
+        }
 
     def analyse(self):
         try:
             self._download_files()
             self._run_sbuild()
-            self._check_analysis_result()
-            self._produce_cg_to_kafka()
+            #self._check_analysis_result()
+            #self._produce_cg_to_kafka()
         except AnalyserError:
             self._produce_error_to_kafka()
 
@@ -78,10 +78,18 @@ class Analyser:
                     print('Error during requests to {0} : status {1}'.format(
                         url, resp.status_code
                     ))
+                    self.error_msg['phase'] = 'downloading'
+                    self.error_msg['message'] = 'Url {}: status {}'.format(
+                        url, resp.status_code
+                    )
                     raise AnalyserError("Error during request")
                 return resp.content
         except RequestException as e:
             print('Error during requests to {0} : {1}'.format(
+                url, str(e))
+            )
+            self.error_msg['phase'] = 'downloading'
+            self.error_msg['message'] = 'Url {}: error {}'.format(
                 url, str(e))
             )
             raise AnalyserError("Error during request")
@@ -142,8 +150,11 @@ class Analyser:
         # Find the .dsc file
         dsc = glob.glob("*.dsc")
         if len(dsc) != 1:
-            print("Cannot find .dsc file or found multiple")
-            raise AnalyserError("Cannot find .dsc file or found multiple")
+            message = 'Cannot find .dsc file or found multiple'
+            print(message)
+            self.error_msg['phase'] = 'run_sbuild'
+            self.error_msg['message'] = message
+            raise AnalyserError(message)
         dsc = dsc[0]
 
         sbuild_options = [
@@ -182,32 +193,13 @@ class Analyser:
             )
             raise AnalyserError("An error occurred during cg generation")
 
-    def _save_error_messages(self, errors):
-        """Save error messages in self.error_msg dictionary.
-        """
-        self.error_msg[self.status] = {}
-        for error in errors:
-            self.error_msg[self.status][error] = find_error(error)
-
-    def _detect_error_messages(self):
-        """Detect which error occurred.
-        """
-        if self.status == 'failed-csmake':
-            self._save_error_messages(['csmake_error'])
-        elif self.status == 'failed-cscout':
-            self._save_error_messages(['csmake_warnings', 'cscout_error'])
-        elif self.status == 'failed-empty':
-            self._save_error_messages(['csmake_warnings', 'cscout_warnings'])
-        elif self.status == 'failed-fcan':
-            self._save_error_messages(['fcan_error'])
-
     def _produce_error_to_kafka(self):
         """Push error to kafka topic.
         """
         print("{}: Push error message to kafka topic".format(
             str(datetime.datetime.now()))
         )
-        self._detect_error_messages()
+        self.error_msg['datetime'] = str(datetime.datetime.now())
         self.producer.send(self.error_topic, json.dumps(self.error_msg))
 
     def _produce_cg_to_kafka(self):
@@ -230,6 +222,7 @@ def consume_from_kafka(in_topic, out_topic, err_topic, servers, group):
         bootstrap_servers=servers.split(','),
         auto_offset_reset='earliest',
         enable_auto_commit=True,
+        max_poll_records=1,
         group_id=group,
         value_deserializer=lambda x: json.loads(x.decode('utf-8'))
     )
