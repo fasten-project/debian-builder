@@ -78,10 +78,18 @@ class Analyser:
                     print('Error during requests to {0} : status {1}'.format(
                         url, resp.status_code
                     ))
+                    self.error_msg['phase'] = 'downloading'
+                    self.error_msg['message'] = 'Url {}: status {}'.format(
+                        url, resp.status_code
+                    )
                     raise AnalyserError("Error during request")
                 return resp.content
         except RequestException as e:
             print('Error during requests to {0} : {1}'.format(
+                url, str(e))
+            )
+            self.error_msg['phase'] = 'downloading'
+            self.error_msg['message'] = 'Url {}: error {}'.format(
                 url, str(e))
             )
             raise AnalyserError("Error during request")
