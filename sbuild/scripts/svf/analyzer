@@ -18,12 +18,13 @@ VERSION=$(cat $DSC | grep '^Version: ')
 VERSION=${VERSION#"Version: "}
 VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')"
 ARCH="$(dpkg --print-architecture)"
+RELEASE="$(dpkg --status tzdata|grep Provides|cut -f2 -d'-')"
 PKG="$NAME"
 
 # Directories
 DEST="/callgraphs/"
 # $DEST_PKG/binary_package/{build.err,svf.err,fcan.err,status,fcg.json}
-DEST_PKG="$DEST$PKG/$VERSION/$ARCH"
+DEST_PKG="$DEST$PKG/$RELEASE/$VERSION/$ARCH"
 BINARIES_PER_PKG="$PWD_SRC/binaries_per_pkg"
 SVF_DIR="$PWD_SRC/svf_data"
 PACKAGES="$PWD_PKG/packages"
@@ -273,10 +274,10 @@ produce_callgraphs() {
 main () {
     prepare_env && build && detect_binaries
     # Optimization
-    # Use info from detect_packages before run_svf 
+    # Use info from detect_packages before run_svf
     # if the packages were generated in the first build
     if [ $HAS_DEBS -ne 0 ]; then
-        run_svf && rebuild && detect_packages 
+        run_svf && rebuild && detect_packages
     else
         echo "produce_debs: success" >> $DEST_PKG/report
         detect_packages && run_svf
