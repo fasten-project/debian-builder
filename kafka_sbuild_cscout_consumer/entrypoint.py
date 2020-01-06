@@ -94,7 +94,7 @@ class Analyser:
             )
             self.error_msg['phase'] = 'downloading'
             self.error_msg['message'] = 'Url {}: error {}'.format(
-                url, str(e))
+                url, str(e)
             )
             raise AnalyserError("Error during request")
 
