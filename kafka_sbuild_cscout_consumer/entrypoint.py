@@ -190,11 +190,6 @@ class Analyser:
             )
             raise AnalyserError("An error occurred during cg generation")
 
-    def _detect_error_messages(self):
-        """Detect which error occurred.
-        """
-        pass
-
     def _produce_error_to_kafka(self):
         """Push error to kafka topic.
         """
@@ -202,7 +197,6 @@ class Analyser:
             str(datetime.datetime.now()))
         )
         self.error_msg['datetime'] = str(datetime.datetime.now())
-        self._detect_error_messages()
         self.producer.send(self.error_topic, json.dumps(self.error_msg))
 
     def _produce_cg_to_kafka(self):
