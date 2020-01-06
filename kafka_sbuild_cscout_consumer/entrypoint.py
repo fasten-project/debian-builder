@@ -70,7 +70,6 @@ class Analyser:
             self._download_files()
             self._run_sbuild()
             self._check_analysis_result()
-            #self._produce_cg_to_kafka()
         except AnalyserError:
             self._produce_error_to_kafka()
 
@@ -181,10 +180,6 @@ class Analyser:
 
     def _check_analysis_result(self):
         """Checks if call graph generated successfully.
-
-        In case some analysis failed or some fcan runs failed 
-        then call _produce_error_to_kafka instead of raising 
-        an exception
         """
         try:
             with open(self.callgraph_dir + 'report', 'r') as fd:
@@ -221,6 +216,14 @@ class Analyser:
                         self._produce_error_to_kafka()
                     if log[2] == 'success':
                         self.status = 'done'
+                        pkg = log[1]
+                        path = "{}/{}/".format(
+                            self.callgraph_dir, pkg
+                        )
+                        print("{}: Push call graph for {} to kafka topic".format(
+                            str(datetime.datetime.now()), pkg
+                        )
+                        self._produce_cg_to_kafka(path)
         except FileNotFoundError:
             message = "File not found: " + self.callgraph_dir + " report"
             print(message)
@@ -241,10 +244,10 @@ class Analyser:
         self.error_msg['datetime'] = str(datetime.datetime.now())
         self.producer.send(self.error_topic, json.dumps(self.error_msg))
 
-    def _produce_cg_to_kafka(self):
+    def _produce_cg_to_kafka(self, path):
         """Push call graph to kafka topic.
         """
-        with open('/callgraph/can_cgraph.json', 'r') as f:
+        with open(path + 'fcg.json', 'r') as f:
             call_graph = json.load(f)
         self.producer.send(self.topic, json.dumps(call_graph))
 
