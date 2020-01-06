@@ -48,6 +48,9 @@ class Analyser:
         self.dir_name = '{}-{}-{}-{}'.format(
                 self.package, self.dist, self.arch, self.version
         )
+        self.callgraph_dir = '{}/{}/{}/{}/{}'.format(
+            'callgraphs', self.package, self.dist, self.version, self.arch
+        )
         self.url = snap_url.format(self.package, self.version)
         self.urls = []
         self.error_msg = {
@@ -176,6 +179,10 @@ class Analyser:
 
     def _check_analysis_result(self):
         """Checks if call graph generated successfully.
+
+        In case some analysis failed or some fcan runs failed 
+        then call _produce_error_to_kafka instead of raising 
+        an exception
         """
         try:
             with open('/callgraph/report', 'r') as file:
