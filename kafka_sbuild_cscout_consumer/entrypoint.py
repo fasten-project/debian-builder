@@ -264,7 +264,6 @@ def consume_from_kafka(in_topic, out_topic, err_topic, servers, group):
         bootstrap_servers=servers.split(','),
         auto_offset_reset='earliest',
         enable_auto_commit=True,
-        max_poll_records=1,
         group_id=group,
         value_deserializer=lambda x: json.loads(x.decode('utf-8'))
     )
