@@ -150,8 +150,11 @@ class Analyser:
         # Find the .dsc file
         dsc = glob.glob("*.dsc")
         if len(dsc) != 1:
-            print("Cannot find .dsc file or found multiple")
-            raise AnalyserError("Cannot find .dsc file or found multiple")
+            message = 'Cannot find .dsc file or found multiple'
+            print(message)
+            self.error_msg['phase'] = 'run_sbuild'
+            self.error_msg['message'] = message
+            raise AnalyserError(message)
         dsc = dsc[0]
 
         sbuild_options = [
