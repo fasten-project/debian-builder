@@ -79,7 +79,8 @@ class Analyser:
         try:
             with closing(get(url, stream=True)) as resp:
                 if resp.status_code != 200:
-                    print('Error during requests to {0} : status {1}'.format(
+                    print('{0}: Error during requests to {1} : status {2}'.format(
+                        str(datetime.datetime.now()),
                         url, resp.status_code
                     ))
                     self.error_msg['phase'] = 'downloading'
@@ -89,7 +90,8 @@ class Analyser:
                     raise AnalyserError("Error during request")
                 return resp.content
         except RequestException as e:
-            print('Error during requests to {0} : {1}'.format(
+            print('{}: Error during requests to {0} : {1}'.format(
+                str(datetime.datetime.now()),
                 url, str(e))
             )
             self.error_msg['phase'] = 'downloading'
@@ -155,7 +157,10 @@ class Analyser:
         dsc = glob.glob("*.dsc")
         if len(dsc) != 1:
             message = 'Cannot find .dsc file or found multiple'
-            print(message)
+            print("{}: {}".format(
+                str(datetime.datetime.now()),
+                message)
+            )
             self.error_msg['phase'] = 'run_sbuild'
             self.error_msg['message'] = message
             raise AnalyserError(message)
@@ -229,7 +234,10 @@ class Analyser:
                             self._produce_cg_to_kafka(path)
         except FileNotFoundError:
             message = "File not found: " + self.callgraph_dir + "/report"
-            print(message)
+            print("{}: {}".format(
+                str(datetime.datetime.now()),
+                message)
+            )
             self.error_msg['phase'] = 'report'
             self.error_msg['message'] = message
             raise AnalyserError(message)
@@ -242,10 +250,10 @@ class Analyser:
         """Push error to kafka topic.
         """
         print("{}: Push error message to kafka topic: {}: {}: {}".format(
+            str(datetime.datetime.now())),
             self.error_msg['phase'],
             self.error_msg['type'],
-            self.error_msg['message'],
-            str(datetime.datetime.now()))
+            self.error_msg['message']
         )
         self.error_msg['datetime'] = str(datetime.datetime.now())
         self.producer.send(self.error_topic, json.dumps(self.error_msg))
@@ -258,7 +266,10 @@ class Analyser:
                 call_graph = json.load(f)
         except FileNotFoundError:
             message = "File not found: " + path + "fcg.json"
-            print(message)
+            print("{}: {}".format(
+                str(datetime.datetime.now()),
+                message)
+            )
             self.error_msg['phase'] = 'read_fcg'
             self.error_msg['message'] = message
             raise AnalyserError(message)
