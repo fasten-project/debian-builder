@@ -1,15 +1,29 @@
-# Docker Image to produce C call graphs from Kafka
+# Docker Images to produce C call graphs from Kafka
 
-This Docker image gets Debian packages releases events from a Kafka topic
-and generates the corresponding call graphs using the CScout static analysis
-tool. The container runs indefinitely. It requires the options
-`--net=host`, and `--cap-add SYS_ADMIN`.
+This Docker images get Debian packages releases events from a Kafka topic
+and generates the corresponding call graphs using the either SVF or CScout
+static analysis tools. The containers run indefinitely. They require the
+options `--net=host`, and `--privileged`.
+
+Build Images
+------------
+
+```bash
+docker build -t kafka_svf -f svf.Dockerfile .
+docker build -t kafka_cscout -f cscout.Dockerfile .
+```
+
+Dockerhub images
+----------------
+
+* svf: `schaliasos/kafka_svf:latest`
+* cscout: ``
 
 How to run
 ----------
 
 ```bash
-usage: docker run -it --net=host --cap-add SYS_ADMIN schaliasos/kafka_sbuild_cscout
+usage: docker run -it --net=host --privileged schaliasos/kafka_svf
     in_topic out_topic err_topic bootstrap_servers group sleep_time [-h]
 
 positional arguments:
@@ -27,6 +41,6 @@ optional arguments:
 For example:
 
 ```bash
-docker run -it --net=host --cap-add SYS_ADMIN schaliasos/kafka_sbuild_cscout \
+docker run -it --net=host --cap-add --privileged schaliasos/kafka_svf \
     cf_deb_release cf_fasten_cg cf_errors localhost:9092 group-1 60
 ```
