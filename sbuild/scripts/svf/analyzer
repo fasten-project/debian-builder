@@ -274,15 +274,20 @@ produce_callgraphs() {
 }
 
 main () {
-    prepare_env && build && detect_binaries
+    prepare_env 
+    build 
+    detect_binaries
     # Optimization
     # Use info from detect_packages before run_svf
     # if the packages were generated in the first build
     if [ $HAS_DEBS -ne 0 ]; then
-        run_svf && rebuild && detect_packages
+        run_svf 
+        rebuild 
+        detect_packages
     else
         echo "produce_debs: success" >> $DEST_PKG/report
-        detect_packages && run_svf
+        detect_packages 
+        run_svf
     fi
     produce_callgraphs
 }
