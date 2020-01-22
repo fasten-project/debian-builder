@@ -3,6 +3,8 @@
 DSC=$1
 SRC=$2
 
+DSC=$(ls *.dsc)
+
 # Working directories
 PWD_PKG=$(pwd)
 cd $SRC
@@ -18,32 +20,34 @@ VERSION=$(cat $DSC | grep '^Version: ')
 VERSION=${VERSION#"Version: "}
 VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')"
 ARCH="$(dpkg --print-architecture)"
+RELEASE="$(dpkg --status tzdata|grep Provides|cut -f2 -d'-')"
 PKG="$NAME"
 
 # Directories
 DEST="/callgraphs/"
 # $DEST_PKG/binary_package/{build.err,svf.err,fcan.err,status,fcg.json}
-DEST_PKG="$DEST$PKG/$VERSION/$ARCH"
+DEST_PKG="$DEST$PKG/$RELEASE/$VERSION/$ARCH"
 BINARIES_PER_PKG="$PWD_SRC/binaries_per_pkg"
-SVF_DIR="$PWD_SRC/svf_data"
 CSCOUT_DIR="$PWD_SRC/cscout_projects"
 PACKAGES="$PWD_PKG/packages"
-CSCOUT_TMP="/tmp_dir"
 
 BINARIES=''
 SYMLINKED=''
+USED_BINARIES=''
 TOTAL_BIN=''
 HAS_DEBS=0
 
 cd $SRC
-mkdir $BINARIES_PER_PKG
-mkdir $SVF_DIR
-mkdir $PACKAGES
+mkdir -p $BINARIES_PER_PKG
+mkdir -p $SVF_DIR
+mkdir -p $PACKAGES
 mkdir -p $DEST_PKG
-mkdir $CSCOUT_TMP
 
 build() {
-    if ! CSMAKEFLAGS='-T /tmp_dir' MAKE=/usr/local/bin/csmake dpkg-buildpackage -b 2> error; then
+    printf "\n###Debug: build\n"
+    echo "tool: cscout" >> $DEST_PKG/report
+    rm -rf tmp_dir && mkdir -p tmp_dir
+    if ! CSMAKEFLAGS='-T tmp_dir -A -s cscout_projects -k' MAKE=/usr/local/bin/csmake dpkg-buildpackage -b 2> error; then
         cp error $DEST_PKG/build.err
         echo "build: failed" >> $DEST_PKG/report
         exit -1
@@ -67,7 +71,7 @@ cs_merge_files() {
 }
 
 detect_binaries() {
-    printf "\n###Debug: binaries\n"
+    printf "\n###Debug: detect_binaries\n"
     EXECUTABLES=$(find -type f -executable -exec sh -c \
         "file -i '{}' | grep -q 'executable; charset=binary'" \; -print)
     ARCHIVES=$(find -type f -exec sh -c \
@@ -78,6 +82,13 @@ detect_binaries() {
     SYMLINKED=$(find -type l -exec sh -c \
         "file -i '{}' | grep -q 'charset=binary'" \; -print)
     TOTAL_BIN="${BINARIES} ${SYMLINKED}"
+    count=$(wc -w <<< "$TOTAL_BIN")
+    if [ "$count" -eq "0" ]; then
+        echo "detect_binaries: failed" >> $DEST_PKG/report
+        exit -1
+    fi
+    echo "detect_binaries: success" >> $DEST_PKG/report
+    echo "#binaries: $count" >> $DEST_PKG/report
 }
 
 detect_packages() {
@@ -91,14 +102,16 @@ detect_packages() {
         for n in $NAMES; do
             prefix="./debian/tmp/"
             install_file="debian/$n.install"
+            touch $BINARIES_PER_PKG/$n
             if [ -f $install_file ]; then
                 for path in $(cat $install_file | cut -d ' ' -f1); do
-                    for f in $prefix$path; do
+                    for f in $(find $prefix$path -type f); do
                         x=$(basename -- "$f")
                         if [[ "$TOTAL_BIN" == *"$x"* ]]; then
                             # We may need to look for hole path
                             # It may have duplicates
                             echo "$x" >> $BINARIES_PER_PKG/$n
+                            USED_BINARIES="${USED_BINARIES} ${x}"
                         fi
                     done
                 done
@@ -109,8 +122,23 @@ detect_packages() {
             x=$(basename -- "$bin")
             # It may have duplicates
             echo "$x" >> $BINARIES_PER_PKG/$NAMES
+            USED_BINARIES="${USED_BINARIES} ${x}"
         done
     fi
+    # Add symlinked
+    for i in $SYMLINKED; do
+        b=$(basename -- "$i")
+        if [[ $USED_BINARIES == *"$b"* ]]; then
+            original=$(readlink -f $i)
+            original=$(basename -- "$original")
+            USED_BINARIES="${USED_BINARIES} ${original}"
+        fi
+    done
+    # Remove duplicates
+    USED_BINARIES=$(echo "$USED_BINARIES" | awk '{for (i=1;i<=NF;i++) if (!USED_BINARIES[$i]++) printf("%s%s",$i,FS)}{printf("\n")}')
+    echo "#detect_packages_number: $NUM" >> $DEST_PKG/report
+    temp_names=$(tr '\n' ' ' <<< $NAMES)
+    echo "detect_packages: $temp_names" >> $DEST_PKG/report
 }
 
 run_cscout() {
@@ -180,8 +208,10 @@ produce_callgraphs() {
 }
 
 main () {
-    build && cs_merge_files && detect_binaries && run_cscout && \
-        detect_packages && produce_callgraphs
+    build
+    cs_merge_files
+    #&& detect_binaries && run_cscout && \
+    #    detect_packages && produce_callgraphs
 }
 
 main
