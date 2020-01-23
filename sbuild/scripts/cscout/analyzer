@@ -146,18 +146,27 @@ run_cscout() {
     cd $CSCOUT_DIR
     for cs in $(ls); do
         echo "Processing $cs"
+        x1=$(basename -- "$cs")
+        x=${x1::${#x1}-3}
+        if [[ ! $USED_BINARIES == *"$x"* ]]; then
+            echo "Skip $cs"
+            echo "#analysis: $cs: not in USED_BINARIES" >> $DEST_PKG/report
+            continue
+        fi
         if [[ -f "$cs" && ! -s "$cs" ]]; then
-            echo "${cs}: empty" >> $DEST_PKG/report
+            echo "#analysis: ${cs}: empty" >> $DEST_PKG/report
+            echo "analysis: ${cs}: failed: empty" >> $DEST_PKG/report
+            continue
         fi
         if cscout -R "$R_OPTION_PARAM" $cs 2>error; then
             mv cgraph.txt $CSCOUT_DIR/$(basename $cs .cs).txt
             if [ -f "error" ]; then
                 cp error $DEST_PKG/$cs.warn
             fi
-            echo "cscout ${cs}: success" >> $DEST_PKG/report
+            echo "analysis: ${cs}: success" >> $DEST_PKG/report
         else
             cp error $DEST_PKG/$cs.err
-            echo "cscout ${cs}: failed" >> $DEST_PKG/report
+            echo "analysis: ${cs}: failed: cscout" >> $DEST_PKG/report
         fi
     done
     cd $PWD_SRC
@@ -210,6 +219,9 @@ produce_callgraphs() {
 main () {
     build
     cs_merge_files
+    detect_binaries
+    detect_packages
+    run_cscout
     #&& detect_binaries && run_cscout && \
     #    detect_packages && produce_callgraphs
 }
