@@ -179,6 +179,9 @@ run_cscout() {
 }
 
 produce_callgraphs() {
+    pip3 install setuptools
+    pip3 install pygraphviz
+    pip3 install networkx
     echo "
     {
         \"CScout\": {
@@ -194,23 +197,33 @@ produce_callgraphs() {
     " > custom_deps.json
     for pkg in $(ls $BINARIES_PER_PKG); do
             mkdir -p $PACKAGES/$pkg
-            cp $PWD_PKG/${pkg}_*.*deb $PACKAGES/$pkg
+            if ! cp $PWD_PKG/${pkg}_*.*deb $PACKAGES/$pkg ; then
+                echo "produce_callgraph: $pkg: failed: missing deb" >> $DEST_PKG/report
+                rm -rf $PACKAGES/$pkg
+                continue
+            fi
+            touch $PACKAGES/$pkg/cgraph.txt
             for bin in $(cat binaries_per_pkg/$pkg); do
                     cat $CSCOUT_DIR/$bin.txt >> $PACKAGES/$pkg/cgraph.txt
             done
+            if [ ! -s "$PACKAGES/$pkg/cgraph.txt" ]; then
+                echo "produce_callgraph: $pkg: failed: empty" >> $DEST_PKG/report
+                rm -rf $PACKAGES/$pkg
+                continue
+            fi
             cp $PWD_PKG/*.dsc $PACKAGES/$pkg/$pkg.dsc
             cp $PWD_SRC/debian/changelog $PACKAGES/$pkg/$pkg.changelog
     done
     for d in $(ls $PACKAGES); do
-	mkdir -p $DEST_PKG/$d/
-        if fcan -c custom_deps.json $PACKAGES/$d 2> fcan_error; then
+        mkdir -p $DEST_PKG/$d/
+        if fcan -c custom_deps.json -s $PKG -a cscout $PACKAGES/$d 2> fcan_error; then
             cp $PACKAGES/$d/can_cgraph.json $DEST_PKG/$d/fcg.json
-            echo "fcan $d: success" >> $DEST_PKG/report
+            echo "produce_callgraph: $d: success" >> $DEST_PKG/report
         else
             # It will catch all the errors, such as when a packages
             # does not have a .deb file
             cp fcan_error $DEST_PKG/$d/fcan.err
-            echo "fcan $d: failed" >> $DEST_PKG/report
+            echo "produce_callgraph: $d: failed": fcan >> $DEST_PKG/report
         fi
     done
     cp $PWD_SRC/debian/changelog $DEST_PKG/changelog
@@ -222,8 +235,7 @@ main () {
     detect_binaries
     detect_packages
     run_cscout
-    #&& detect_binaries && run_cscout && \
-    #    detect_packages && produce_callgraphs
+    produce_callgraphs
 }
 
 main
