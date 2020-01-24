@@ -132,21 +132,23 @@ produce_callgraphs() {
     " > custom_deps.json
     for pkg in $(ls $BINARIES_PER_PKG); do
             mkdir -p $PACKAGES/$pkg
-            if ! cp $PWD_PKG/${pkg}_*.*deb $PACKAGES/$pkg ; then
-                echo "produce_callgraph: $pkg: failed: missing deb" >> $DEST_PKG/report
-                rm -rf $PACKAGES/$pkg
-                continue
+            if ! cp $PWD_PKG/${pkg}_*.deb $PACKAGES/$pkg ; then
+                if ! cp $PWD_PKG/${pkg}_*.udeb $PACKAGES/$pkg ; then
+                    echo "produce_callgraph: $pkg: failed: missing deb" >> $DEST_PKG/report
+                    rm -rf $PACKAGES/$pkg
+                    continue
+                fi
             fi
-            touch $PACKAGES/$pkg/cgraph.txt
+            touch $PACKAGES/$pkg/temp.txt
             for bin in $(cat binaries_per_pkg/$pkg); do
-                    cat $TOOL_DIR/$bin.txt >> $PACKAGES/$pkg/cgraph.txt
+                    cat $TOOL_DIR/$bin.txt >> $PACKAGES/$pkg/temp.txt
             done
-            if [ ! -s "$PACKAGES/$pkg/cgraph.txt" ]; then
+            if [ ! -s "$PACKAGES/$pkg/temp.txt" ]; then
                 echo "produce_callgraph: $pkg: failed: empty" >> $DEST_PKG/report
                 rm -rf $PACKAGES/$pkg
                 continue
             fi
-            awk '!a[$0]++' $PACKAGES/$pkg/cgraph.txt > $PACKAGES/$pkg/cgraph.txt
+            awk '!a[$0]++' $PACKAGES/$pkg/temp.txt > $PACKAGES/$pkg/cgraph.txt
             cp $PWD_PKG/*.dsc $PACKAGES/$pkg/$pkg.dsc
             cp $PWD_SRC/debian/changelog $PACKAGES/$pkg/$pkg.changelog
     done
