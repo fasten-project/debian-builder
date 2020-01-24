@@ -42,10 +42,6 @@ init() {
     mkdir -p $DEST_PKG
 }
 
-build() {
-    printf "\n###Debug: build\n"
-}
-
 detect_binaries() {
     printf "\n###Debug: detect_binaries\n"
     EXECUTABLES=$(find -type f -executable -exec sh -c \
@@ -168,15 +164,3 @@ produce_callgraphs() {
     done
     cp $PWD_SRC/debian/changelog $DEST_PKG/changelog
 }
-
-main () {
-    init
-    build
-    detect_binaries
-    detect_packages
-    produce_callgraphs
-}
-
-main
-
-exit 0
