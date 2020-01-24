@@ -1,0 +1,184 @@
+#!/bin/bash
+# Parameters
+DSC=$1
+SRC=$2
+
+DSC=$(ls *.dsc)
+
+# Working directories
+PWD_PKG=$(pwd)
+cd $SRC
+PWD_SRC=$(pwd)
+cd ../
+
+# Global variables
+R_OPTION_PARAM="cgraph.txt?all=1&n=p&type=1"
+NAME=$(cat $DSC | grep '^Source: ')
+NAME=${NAME#"Source: "}
+NAME="$(echo -e "${NAME}" | tr -d '[:space:]')"
+VERSION=$(cat $DSC | grep '^Version: ')
+VERSION=${VERSION#"Version: "}
+VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')"
+ARCH="$(dpkg --print-architecture)"
+RELEASE="$(dpkg --status tzdata|grep Provides|cut -f2 -d'-')"
+PKG="$NAME"
+
+# Directories
+DEST="/callgraphs/"
+# $DEST_PKG/binary_package/{build.err,svf.err,fcan.err,status,fcg.json}
+DEST_PKG="$DEST$PKG/$RELEASE/$VERSION/$ARCH"
+BINARIES_PER_PKG="$PWD_SRC/binaries_per_pkg"
+TOOL_DIR=""
+PACKAGES="$PWD_PKG/packages"
+
+BINARIES=''
+SYMLINKED=''
+USED_BINARIES=''
+TOTAL_BIN=''
+HAS_DEBS=0
+
+init() {
+    cd $SRC
+    mkdir -p $BINARIES_PER_PKG
+    mkdir -p $TOOL_DIR
+    mkdir -p $PACKAGES
+    mkdir -p $DEST_PKG
+}
+
+build() {
+    printf "\n###Debug: build\n"
+}
+
+detect_binaries() {
+    printf "\n###Debug: detect_binaries\n"
+    EXECUTABLES=$(find -type f -executable -exec sh -c \
+        "file -i '{}' | grep -q 'executable; charset=binary'" \; -print)
+    ARCHIVES=$(find -type f -exec sh -c \
+        "file -i '{}' | grep -q 'archive; charset=binary'" \; -print)
+    SHAREDLIBS=$(find -type f -exec sh -c \
+        "file -i '{}' | grep -q 'sharedlib; charset=binary'" \; -print)
+    BINARIES="${EXECUTABLES} ${ARCHIVES} ${SHAREDLIBS}"
+    SYMLINKED=$(find -type l -exec sh -c \
+        "file -i '{}' | grep -q 'charset=binary'" \; -print)
+    TOTAL_BIN="${BINARIES} ${SYMLINKED}"
+    count=$(wc -w <<< "$TOTAL_BIN")
+    if [ "$count" -eq "0" ]; then
+        echo "detect_binaries: failed" >> $DEST_PKG/report
+        exit -1
+    fi
+    echo "detect_binaries: success" >> $DEST_PKG/report
+    echo "#binaries: $count" >> $DEST_PKG/report
+}
+
+detect_packages() {
+    # Keep only those inside the debian directory
+    printf "\n###Debug: detect_packages\n"
+    # Number of packages
+    NUM=$(awk '/^Package:/{a++}END{print a}' debian/control)
+    # Names of packages
+    NAMES=$(grep "Package:" debian/control | cut -d ":" -f2 | awk '{$1=$1};1')
+    if [ "$NUM" -gt "1" ]; then
+        for n in $NAMES; do
+            prefix="./debian/tmp/"
+            install_file="debian/$n.install"
+            touch $BINARIES_PER_PKG/$n
+            if [ -f $install_file ]; then
+                for path in $(cat $install_file | cut -d ' ' -f1); do
+                    for f in $(find $prefix$path -type f); do
+                        x=$(basename -- "$f")
+                        if [[ "$TOTAL_BIN" == *"$x"* ]]; then
+                            # We may need to look for hole path
+                            # It may have duplicates
+                            echo "$x" >> $BINARIES_PER_PKG/$n
+                            USED_BINARIES="${USED_BINARIES} ${x}"
+                        fi
+                    done
+                done
+            fi
+        done
+    else
+        for bin in $TOTAL_BIN; do
+            x=$(basename -- "$bin")
+            # It may have duplicates
+            echo "$x" >> $BINARIES_PER_PKG/$NAMES
+            USED_BINARIES="${USED_BINARIES} ${x}"
+        done
+    fi
+    # Add symlinked
+    for i in $SYMLINKED; do
+        b=$(basename -- "$i")
+        if [[ $USED_BINARIES == *"$b"* ]]; then
+            original=$(readlink -f $i)
+            original=$(basename -- "$original")
+            USED_BINARIES="${USED_BINARIES} ${original}"
+        fi
+    done
+    # Remove duplicates
+    USED_BINARIES=$(echo "$USED_BINARIES" | awk '{for (i=1;i<=NF;i++) if (!USED_BINARIES[$i]++) printf("%s%s",$i,FS)}{printf("\n")}')
+    echo "#detect_packages_number: $NUM" >> $DEST_PKG/report
+    temp_names=$(tr '\n' ' ' <<< $NAMES)
+    echo "detect_packages: $temp_names" >> $DEST_PKG/report
+}
+
+produce_callgraphs() {
+    pip3 install setuptools
+    pip3 install pygraphviz
+    pip3 install networkx
+    echo "
+    {
+        \"CScout\": {
+            \"forge\": \"\",
+            \"constraints\": \"\",
+            \"architecture\": \"\",
+            \"regex\": [
+                \"^/usr/local/include/cscout.*\"
+            ],
+            \"keep\": false
+        }
+    }
+    " > custom_deps.json
+    for pkg in $(ls $BINARIES_PER_PKG); do
+            mkdir -p $PACKAGES/$pkg
+            if ! cp $PWD_PKG/${pkg}_*.*deb $PACKAGES/$pkg ; then
+                echo "produce_callgraph: $pkg: failed: missing deb" >> $DEST_PKG/report
+                rm -rf $PACKAGES/$pkg
+                continue
+            fi
+            touch $PACKAGES/$pkg/cgraph.txt
+            for bin in $(cat binaries_per_pkg/$pkg); do
+                    cat $TOOL_DIR/$bin.txt >> $PACKAGES/$pkg/cgraph.txt
+            done
+            if [ ! -s "$PACKAGES/$pkg/cgraph.txt" ]; then
+                echo "produce_callgraph: $pkg: failed: empty" >> $DEST_PKG/report
+                rm -rf $PACKAGES/$pkg
+                continue
+            fi
+            cp $PWD_PKG/*.dsc $PACKAGES/$pkg/$pkg.dsc
+            cp $PWD_SRC/debian/changelog $PACKAGES/$pkg/$pkg.changelog
+    done
+    for d in $(ls $PACKAGES); do
+        mkdir -p $DEST_PKG/$d/
+        if fcan -c custom_deps.json -s $PKG -a cscout $PACKAGES/$d 2> fcan_error; then
+            cp $PACKAGES/$d/can_cgraph.json $DEST_PKG/$d/fcg.json
+            echo "produce_callgraph: $d: success" >> $DEST_PKG/report
+        else
+            # It will catch all the errors, such as when a packages
+            # does not have a .deb file
+            cp fcan_error $DEST_PKG/$d/fcan.err
+            echo "produce_callgraph: $d: failed": fcan >> $DEST_PKG/report
+        fi
+    done
+    cp $PWD_SRC/debian/changelog $DEST_PKG/changelog
+}
+
+main () {
+    init
+    build
+    detect_binaries
+    detect_packages
+    produce_callgraphs
+}
+
+main
+
+exit 0
