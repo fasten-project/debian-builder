@@ -1,7 +1,6 @@
 #!/bin/bash
 # Parameters
-DSC=$1
-SRC=$2
+SRC=$1
 
 DSC=$(ls *.dsc)
 
