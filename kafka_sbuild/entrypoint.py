@@ -250,11 +250,11 @@ class Analyser:
         """Push error to kafka topic.
         """
         print("{}: Push error message to kafka topic: {}: {}: {}".format(
-            str(datetime.datetime.now())),
+            str(datetime.datetime.now()),
             self.error_msg['phase'],
             self.error_msg['type'],
             self.error_msg['message']
-        )
+        ))
         self.error_msg['datetime'] = str(datetime.datetime.now())
         self.producer.send(self.error_topic, json.dumps(self.error_msg))
 
