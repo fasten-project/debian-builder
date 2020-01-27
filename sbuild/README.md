@@ -61,4 +61,4 @@ Images in Dockerhub
 
 * **sbuild**: `schaliasos/sbuild`
 * **sbuild_svf**: `schaliasos/sbuild_svf:latest`
-* **sbuild_cscout**:
+* **sbuild_cscout**: `schaliasos/sbuild_cscout:latest`
