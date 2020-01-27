@@ -17,7 +17,7 @@ Dockerhub images
 ----------------
 
 * svf: `schaliasos/kafka_svf:latest`
-* cscout: ``
+* cscout: `schaliasos/kafka_cscout:latest`
 
 How to run
 ----------
@@ -41,6 +41,6 @@ optional arguments:
 For example:
 
 ```bash
-docker run -it --net=host --cap-add --privileged schaliasos/kafka_svf \
+docker run -it --net=host --privileged schaliasos/kafka_svf \
     cf_deb_release cf_fasten_cg cf_errors localhost:9092 group-1 60
 ```
