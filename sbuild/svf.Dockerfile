@@ -56,6 +56,7 @@ RUN wget https://raw.githubusercontent.com/fasten-project/canonical-call-graph-g
     cp fcan.py /usr/local/bin/fcan && chmod +x /usr/local/bin/fcan
 
 # SCRIPT TO RUN TOOLS
+COPY ./scripts/base_analyzer /usr/local/bin/base_analyzer
 COPY ./scripts/svf/analyzer /usr/local/bin/analyzer
 
 # CONFIG FILES

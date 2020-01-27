@@ -19,6 +19,7 @@ RUN wget https://raw.githubusercontent.com/fasten-project/canonical-call-graph-g
 WORKDIR /root
 
 # SCRIPT TO RUN TOOLS
+COPY ./scripts/base_analyzer /usr/local/bin/base_analyzer
 COPY ./scripts/cscout/analyzer /usr/local/bin/analyzer
 
 # CONFIG FILES
