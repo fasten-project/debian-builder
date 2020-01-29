@@ -9,8 +9,8 @@ if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 build() {
     printf "\n###Debug: build\n"
     echo "tool: cscout" >> $DEST_PKG/report
-    rm -rf tmp_dir && mkdir -p tmp_dir
-    if ! CSMAKEFLAGS='-T tmp_dir -A -s cscout_projects -k' MAKE=/usr/local/bin/csmake dpkg-buildpackage -b 2> error; then
+    rm -rf /tmp_dir && mkdir -p /tmp_dir
+    if ! CSMAKEFLAGS='-T /tmp_dir -A -s cscout_projects -k' MAKE=/usr/local/bin/csmake dpkg-buildpackage -b 2> error; then
         cp error $DEST_PKG/build.err
         echo "build: failed" >> $DEST_PKG/report
         exit -1
