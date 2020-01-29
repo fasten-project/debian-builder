@@ -10,7 +10,8 @@ $core_depends = [
                   'fakeroot:native',
                   'python3',
                   'python3-pip',
-                  'vim'
+                  'vim',
+                  'file'
                 ];
 
 $external_commands = {
