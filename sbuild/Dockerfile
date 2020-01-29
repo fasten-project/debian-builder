@@ -9,6 +9,7 @@ RUN apt -yqq update && apt -yqq upgrade && apt install -yqq $dev $sbuild
 
 # Add user to run sbuild
 RUN useradd -ms /bin/bash builder && echo "builder:builder" | chpasswd && adduser builder sudo
+RUN echo "%sudo  ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # INSTALL sbuild
 RUN sbuild-adduser root && \
