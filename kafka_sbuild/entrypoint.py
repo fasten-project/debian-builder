@@ -233,7 +233,7 @@ class Analyser:
                             )
                             self._produce_cg_to_kafka(path)
         except FileNotFoundError:
-            message = "File not found: " + self.callgraph_dir + "/report"
+            message = "File not found: " + self.callgraph_dir + "report"
             print("{}: {}".format(
                 str(datetime.datetime.now()),
                 message)
