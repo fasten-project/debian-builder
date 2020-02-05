@@ -41,6 +41,7 @@ class Analyser:
         self.topic = topic
         self.error_topic = error_topic
         self.producer = producer
+        self.release_msg = release
         self.package = release['source']
         self.version = release['source_version']
         self.dist = release['release']
@@ -58,9 +59,9 @@ class Analyser:
                 'version': self.version,
                 'dist': self.dist,
                 'arch': self.arch,
-                'phase':'', 
-                'type':'', 
-                'message':'', 
+                'phase':'',
+                'type':'',
+                'message':'',
                 'datetime':''
         }
         self.binary_pkgs = []
@@ -256,7 +257,9 @@ class Analyser:
             self.error_msg['message']
         ))
         self.error_msg['datetime'] = str(datetime.datetime.now())
-        self.producer.send(self.error_topic, json.dumps(self.error_msg))
+        message = self.release_msg
+        message['error'] = self.error_msg
+        self.producer.send(self.error_topic, json.dumps(message))
 
     def _produce_cg_to_kafka(self, path):
         """Push call graph to kafka topic.
