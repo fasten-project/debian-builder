@@ -6,14 +6,14 @@ USER root
 WORKDIR /root
 
 # INSTALL CScout
-RUN git clone https://github.com/StefanosChaliasos/cscout
+RUN git clone https://github.com/dspinellis/cscout.git
 WORKDIR cscout
 RUN make && make install
 
 WORKDIR /root
 
 # INSTALL fcan
-RUN wget https://raw.githubusercontent.com/fasten-project/canonical-call-graph-generator/develop/fcan/fcan/fcan.py && \
+RUN wget https://raw.githubusercontent.com/fasten-project/canonical-call-graph-generator/master/fcan/fcan/fcan.py && \
     cp fcan.py /usr/local/bin/fcan && chmod +x /usr/local/bin/fcan
 
 WORKDIR /root
