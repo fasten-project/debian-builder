@@ -52,7 +52,7 @@ RUN sudo install scripts/extract-function-info.sh /usr/local/bin/
 WORKDIR /root
 
 # Install fcan
-RUN wget https://raw.githubusercontent.com/fasten-project/canonical-call-graph-generator/develop/fcan/fcan/fcan.py && \
+RUN wget https://raw.githubusercontent.com/fasten-project/canonical-call-graph-generator/master/fcan/fcan/fcan.py && \
     cp fcan.py /usr/local/bin/fcan && chmod +x /usr/local/bin/fcan
 
 # SCRIPT TO RUN TOOLS
