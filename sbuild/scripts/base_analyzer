@@ -9,7 +9,6 @@ PWD_SRC=$(pwd)
 cd ../
 
 # Global variables
-R_OPTION_PARAM="cgraph.txt?all=1&n=p&type=1"
 NAME=$(cat $DSC | grep '^Source: ')
 NAME=${NAME#"Source: "}
 NAME="$(echo -e "${NAME}" | tr -d '[:space:]')"
@@ -154,7 +153,7 @@ produce_callgraphs() {
     done
     for d in $(ls $PACKAGES); do
         mkdir -p $DEST_PKG/$d/
-        if fcan -c custom_deps.json -s $PKG -a cscout $PACKAGES/$d 2> fcan_error; then
+        if fcan $FCAN_EXTRA_OPTIONS -c custom_deps.json -s $PKG -a $TOOL $PACKAGES/$d 2> fcan_error; then
             cp $PACKAGES/$d/can_cgraph.json $DEST_PKG/$d/fcg.json
             echo "produce_callgraph: $d: success" >> $DEST_PKG/report
         else
