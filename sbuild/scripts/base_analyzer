@@ -144,7 +144,6 @@ produce_callgraphs() {
                 binary="$binaries/${bin%%\.*}"
                 mkdir -p $binary
                 cp $TOOL_DIR/$bin.txt $binary/$bin.txt
-                awk -i inplace '!a[$0]++' $binary/$bin.txt
                 cp $TOOL_DIR/$bin.cs $binary/$bin.cs
             done
             if [ "$(find $binaries -name *.txt)" = "$(find $binaries -name *.txt -empty)" ]; then
