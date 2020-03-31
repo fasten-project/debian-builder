@@ -39,7 +39,8 @@ cs_merge_files() {
 run_cscout() {
     printf "\n###Debug: run_cscout\n"
     cd $TOOL_DIR
-    for cs in $(ls); do
+    cs_projects=$(ls)
+    for cs in $cs_projects; do
         echo "Processing $cs"
         x1=$(basename -- "$cs")
         x=${x1::${#x1}-3}
@@ -69,7 +70,8 @@ run_cscout() {
         original=$(readlink -f $i)
         original=$(basename -- "$original")
         bname=$(basename $i)
-        cp $TOOL_DIR/$original.txt $TOOL_DIR/$bname.txt
+        cp $TOOL_DIR/$original.txt $TOOL_DIR/$bname.txt 2> /dev/null
+        cp $TOOL_DIR/$original.cs $TOOL_DIR/$bname.cs 2> /dev/null
     done
 }
 
