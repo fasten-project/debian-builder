@@ -75,8 +75,8 @@ detect_packages() {
             install_file="debian/$n.install"
             touch $BINARIES_PER_PKG/$n
             if [ -f $install_file ]; then
-                for path in $(cat $install_file | cut -d ' ' -f1); do
-                    for f in $(find $prefix$path -type f); do
+                for path in $(dh-exec $install_file | cut -d ' ' -f1); do
+                    for f in $(find $prefix$path -type f,l); do
                         x=$(basename -- "$f")
                         if [[ "$TOTAL_BIN" == *"$x"* ]]; then
                             # We may need to look for hole path
@@ -138,16 +138,20 @@ produce_callgraphs() {
                     continue
                 fi
             fi
-            touch $PACKAGES/$pkg/temp.txt
+            binaries="$PACKAGES/$pkg/binaries"
+            mkdir -p $binaries
             for bin in $(cat binaries_per_pkg/$pkg); do
-                    cat $TOOL_DIR/$bin.txt >> $PACKAGES/$pkg/temp.txt
+                binary="$binaries/${bin%%\.*}"
+                mkdir -p $binary
+                cp $TOOL_DIR/$bin.txt $binary/$bin.txt
+                awk -i inplace '!a[$0]++' $binary/$bin.txt
+                cp $TOOL_DIR/$bin.cs $binary/$bin.cs
             done
-            if [ ! -s "$PACKAGES/$pkg/temp.txt" ]; then
+            if [ "$(find $binaries -name *.txt)" = "$(find $binaries -name *.txt -empty)" ]; then
                 echo "produce_callgraph: $pkg: failed: empty" >> $DEST_PKG/report
                 rm -rf $PACKAGES/$pkg
                 continue
             fi
-            awk '!a[$0]++' $PACKAGES/$pkg/temp.txt > $PACKAGES/$pkg/cgraph.txt
             cp $PWD_PKG/*.dsc $PACKAGES/$pkg/$pkg.dsc
             cp $PWD_SRC/debian/changelog $PACKAGES/$pkg/$pkg.changelog
     done
