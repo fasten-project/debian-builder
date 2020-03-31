@@ -11,15 +11,16 @@ $core_depends = [
                   'python3',
                   'python3-pip',
                   'vim',
-                  'file'
+                  'file',
+                  'gawk'
                 ];
 
 $external_commands = {
                         'post-build-commands' => [],
                         'chroot-setup-commands' => [],
                         'starting-build-commands' => [
-                            'analyzer %p'
-                            # '%SBUILD_SHELL'
+                            # 'analyzer %p'
+                            '%SBUILD_SHELL'
                         ],
                       };
 
