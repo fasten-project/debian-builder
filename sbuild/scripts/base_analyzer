@@ -160,8 +160,13 @@ produce_callgraphs() {
     done
     for d in $(ls $PACKAGES); do
         mkdir -p $DEST_PKG/$d/
-        if fcan $FCAN_EXTRA_OPTIONS -c custom_deps.json -s $PKG -a $TOOL $PACKAGES/$d 2> fcan_error; then
-            cp $PACKAGES/$d/can_cgraph.json $DEST_PKG/$d/fcg.json
+        deb=$(find $PACKAGES/$d -regextype sed -regex ".*u\?deb" | head -1)
+        dsc=$(find $PACKAGES/$d -name *.dsc | head -1)
+        changelog=$(find $PACKAGES/$d -name *.changelog | head -1)
+        binaries=$PACKAGES/$d/binaries
+        if fcan $FCAN_EXTRA_OPTIONS -c custom_deps.json -s $PKG -a $TOOL \
+            $deb $dsc $changelog $binaries 2> fcan_error; then
+            cp can_cgraph.json $DEST_PKG/$d/fcg.json
             echo "produce_callgraph: $d: success" >> $DEST_PKG/report
         else
             # It will catch all the errors, such as when a packages
