@@ -147,6 +147,8 @@ produce_callgraphs() {
                 awk '!a[$0]++' $binary/$bin.txt > foo
                 mv foo $binary/$bin.txt
                 cp $TOOL_DIR/$bin.cs $binary/$bin.cs
+                binary_file=$(find $PWD_SRC -name $bin |head -1)
+                cp $binary_file $binary/
             done
             if [ "$(find $binaries -name *.txt)" = "$(find $binaries -name *.txt -empty)" ]; then
                 echo "produce_callgraph: $pkg: failed: empty" >> $DEST_PKG/report
