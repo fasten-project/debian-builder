@@ -86,6 +86,20 @@ detect_packages() {
                         fi
                     done
                 done
+            else
+                deb=$(find $PWD_PKG -name $n*deb | head -1)
+                if [ -f $deb ]; then
+                    for path in $(dpkg --contents $deb | awk '{ print $6 }'); do
+                        f=$(find $prefix$path -type f,l)
+                        x=$(basename -- "$f")
+                        if [[ "$TOTAL_BIN" == *"$x"* ]]; then
+                            # We may need to look for hole path
+                            # It may have duplicates
+                            echo "$x" >> $BINARIES_PER_PKG/$n
+                            USED_BINARIES="${USED_BINARIES} ${x}"
+                        fi
+                    done
+                fi
             fi
         done
     else
