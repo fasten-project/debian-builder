@@ -64,6 +64,7 @@ class Analyser:
                 'message':'',
                 'datetime':''
         }
+        self.profiling_data = {'times': {}}
         self.binary_pkgs = []
 
     def analyse(self):
@@ -194,6 +195,9 @@ class Analyser:
                         continue
                     line = line.strip()
                     log = line.split(': ')
+                    if log[0] == 'time_elapsed':
+                        if len(log) >= 3:
+                            self.profiling_data['times'][log[1]] = log[2]
                     if log[0] == 'build':
                         if log[1] == 'failed':
                             self.error_msg['phase'] = 'build'
@@ -259,6 +263,7 @@ class Analyser:
         self.error_msg['datetime'] = str(datetime.datetime.now())
         message = self.release_msg
         message['error'] = self.error_msg
+        message['error']['profiling_data'] = self.profiling_data
         self.producer.send(self.error_topic, json.dumps(message))
 
     def _produce_cg_to_kafka(self, path):
@@ -276,6 +281,7 @@ class Analyser:
             self.error_msg['phase'] = 'read_fcg'
             self.error_msg['message'] = message
             raise AnalyserError(message)
+        call_graph['profiling_data'] = self.profiling_data
         self.producer.send(self.topic, json.dumps(call_graph))
 
 
