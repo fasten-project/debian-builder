@@ -43,7 +43,7 @@ def run(in_topic, out_topic, servers, group, filename, sources={},
     consumer = KafkaConsumer(
         in_topic,
         bootstrap_servers=servers.split(','),
-        auto_offset_reset='latest',
+        auto_offset_reset='earliest',
         enable_auto_commit=True,
         group_id=group,
         value_deserializer=lambda x: json.loads(x.decode('utf-8'))
@@ -108,14 +108,14 @@ def get_parser():
         help="Time to sleep."
     )
     parser.add_argument(
-        '-f'
+        '-f',
         '--filename',
         dest='filename',
         help="File to save sources metadata.",
         default='sources.json'
     )
     parser.add_argument(
-        '-o'
+        '-o',
         '--check-old',
         dest='check_old',
         action='store_true',
