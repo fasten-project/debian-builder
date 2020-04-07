@@ -9,7 +9,7 @@ How to run
 ----------
 
 ```bash
-usage: docker run -it --net=host schaliasos/kafka_filter_debian
+usage: docker run -it --net=host schaliasos/kafka-filter-debian
     in_topic out_topic bootstrap_servers group sleep_time -f FILENAME [-h]
 
 positional arguments:
@@ -28,6 +28,6 @@ For example:
 
 ```bash
 docker run -it --net=host -v /local/path:/root/sources \
-    schaliasos/kafka_filter_debian \
+    schaliasos/kafka-filter-debian \
     cf_deb_release cf_fasten_cg localhost:9092 group-1 60 -f sources.json
 ```

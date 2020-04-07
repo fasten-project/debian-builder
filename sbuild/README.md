@@ -14,8 +14,8 @@ Build
 
 ```
 docker build -t sbuild .
-docker build -t sbuild_svf -f svf.Dockerfile .
-docker build -t sbuild_cscout -f cscout.Dockerfile .
+docker build -t sbuild-svf -f svf.Dockerfile .
+docker build -t sbuild-cscout -f cscout.Dockerfile .
 ```
 
 Run
@@ -60,5 +60,5 @@ Images in Dockerhub
 -------------------
 
 * **sbuild**: `schaliasos/sbuild`
-* **sbuild_svf**: `schaliasos/sbuild_svf:latest`
-* **sbuild_cscout**: `schaliasos/sbuild_cscout:latest`
+* **sbuild-svf**: `schaliasos/sbuild-svf:latest`
+* **sbuild-cscout**: `schaliasos/sbuild-cscout:latest`

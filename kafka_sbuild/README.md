@@ -9,21 +9,21 @@ Build Images
 ------------
 
 ```bash
-docker build -t kafka_svf -f svf.Dockerfile .
-docker build -t kafka_cscout -f cscout.Dockerfile .
+docker build -t kafka-svf -f svf.Dockerfile .
+docker build -t kafka-cscout -f cscout.Dockerfile .
 ```
 
 Dockerhub images
 ----------------
 
-* svf: `schaliasos/kafka_svf:latest`
-* cscout: `schaliasos/kafka_cscout:latest`
+* svf: `schaliasos/kafka-svf:latest`
+* cscout: `schaliasos/kafka-cscout:latest`
 
 How to run
 ----------
 
 ```bash
-usage: docker run -it --net=host --privileged schaliasos/kafka_svf
+usage: docker run -it --net=host --privileged schaliasos/kafka-svf
     in_topic out_topic err_topic bootstrap_servers group sleep_time [-h]
 
 positional arguments:
@@ -41,6 +41,6 @@ optional arguments:
 For example:
 
 ```bash
-docker run -it --net=host --privileged schaliasos/kafka_svf \
+docker run -it --net=host --privileged schaliasos/kafka-svf \
     cf_deb_release cf_fasten_cg cf_errors localhost:9092 group-1 60
 ```

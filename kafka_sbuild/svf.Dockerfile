@@ -1,5 +1,5 @@
 # vim:set ft=dockerfile:
-FROM schaliasos/sbuild_svf:latest
+FROM schaliasos/sbuild-svf:latest
 
 RUN pip3 install requests BeautifulSoup4 kafka-python
 
