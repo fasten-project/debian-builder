@@ -162,12 +162,16 @@ produce_callgraphs() {
                 awk '!a[$0]++' $binary/$bin.txt > foo
                 mv foo $binary/$bin.txt
                 cp $TOOL_DIR/$bin.cs $binary/$bin.cs
-                binary_file=$(find $PWD_SRC -name $bin |head -1)
+                binary_file=$(find $PWD_SRC -name $bin -type f |head -1)
                 if ! cp $binary_file $binary/ ; then
                     # Try to find the origin of the file (in case it's a symbolic link)
-                    link=$(readlink $binary_file)
-                    binary_file_origin=$(find $PWD_SRC -name $link |head -1)
-                    cp $binary_file_origin $binary/
+                    for binary_file in $(find $PWD_SRC -name $bin -type l ); do
+                        link=$(readlink $binary_file)
+                        binary_file_origin=$(find $PWD_SRC -name $link |head -1)
+                        if cp $binary_file_origin $binary/; then
+                            break
+                        fi
+                    done
                 fi
             done
             if [ "$(find $binaries -name *.txt)" = "$(find $binaries -name *.txt -empty)" ]; then
