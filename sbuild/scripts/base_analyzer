@@ -12,7 +12,7 @@ cd ../
 NAME=$(cat $DSC | grep '^Source: ')
 NAME=${NAME#"Source: "}
 NAME="$(echo -e "${NAME}" | tr -d '[:space:]')"
-VERSION=$(cat $DSC | grep '^Version: ')
+VERSION=$(cat $DSC | grep '^Version: ' | head -1)
 VERSION=${VERSION#"Version: "}
 VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')"
 ARCH="$(dpkg --print-architecture)"
