@@ -9,7 +9,7 @@ PWD_SRC=$(pwd)
 cd ../
 
 # Global variables
-NAME=$(cat $DSC | grep '^Source: ')
+NAME=$(cat $DSC | grep '^Source: ' | head -1)
 NAME=${NAME#"Source: "}
 NAME="$(echo -e "${NAME}" | tr -d '[:space:]')"
 VERSION=$(cat $DSC | grep '^Version: ' | head -1)
