@@ -77,13 +77,32 @@ run_cscout() {
 
 main () {
     TOOL_DIR="$PWD_SRC/cscout_projects"
+    SECONDS=0
+    P=0
     init
     build
+    TOTAL=$(($SECONDS-$P))
+    echo "time_elapsed: build: $TOTAL" >> $DEST_PKG/report
+    P=$SECONDS
     cs_merge_files
+    TOTAL=$(($SECONDS-$P))
+    echo "time_elapsed: cs_merge_files: $TOTAL" >> $DEST_PKG/report
+    P=$SECONDS
     detect_binaries
+    TOTAL=$(($SECONDS-$P))
+    echo "time_elapsed: detect_binaries: $TOTAL" >> $DEST_PKG/report
+    P=$SECONDS
     detect_packages
+    TOTAL=$(($SECONDS-$P))
+    echo "time_elapsed: detect_packages: $TOTAL" >> $DEST_PKG/report
+    P=$SECONDS
     run_cscout
+    TOTAL=$(($SECONDS-$P))
+    echo "time_elapsed: run_cscout: $TOTAL" >> $DEST_PKG/report
+    P=$SECONDS
     produce_callgraphs
+    TOTAL=$(($SECONDS-$P))
+    echo "time_elapsed: produce_callgraphs: $TOTAL" >> $DEST_PKG/report
 }
 
 main
