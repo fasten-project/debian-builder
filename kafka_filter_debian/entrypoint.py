@@ -6,8 +6,6 @@ from kafka import KafkaProducer
 from kafka import KafkaConsumer
 
 
-SOURCES = 'sources'
-
 def parse_release(release):
     source = release['source']
     version = release['source_version']
@@ -23,17 +21,17 @@ def filter_sources(sources, release):
     source, version, dist, arch = parse_release(release)
     if source not in sources.keys():
         sources[source] = {version: {dist: [arch]}}
-        return False
+        return True
     elif version not in sources[source].keys():
         sources[source][version] = {dist: [arch]}
-        return False
+        return True
     elif dist not in sources[source][version]:
         sources[source][version][dist] = [arch]
-        return False
+        return True
     elif arch not in sources[source][version][dist]:
         sources[source][version][dist].append(arch)
-        return False
-    return True
+        return True
+    return False
 
 
 def run(in_topic, out_topic, servers, group, filename):
@@ -54,15 +52,12 @@ def run(in_topic, out_topic, servers, group, filename):
         bootstrap_servers=servers.split(','),
         value_serializer=lambda x: x.encode('utf-8')
     )
-    # Create default folder if not exists
-    if not os.path.exists(SOURCES):
-        os.makedirs(SOURCES)
     # Read the sources that has been already consumed
-    if os.path.exists(filename):
-        with open(filename, 'r') as f:
-            sources = json.load(f)
-    else:
-        sources = {}
+    sources = {}
+    if filename:
+        if os.path.exists(filename):
+            with open(filename, 'r') as f:
+                sources = json.load(f)
 
     # Read messages
     for message in consumer:
@@ -75,8 +70,9 @@ def run(in_topic, out_topic, servers, group, filename):
             # Push release to topic
             producer.send(out_topic, json.dumps(release))
             # Save sources
-            with open(filename, 'w') as f:
-                json.dump(sources, f)
+            if filename:
+                with open(filename, 'w') as f:
+                    json.dump(sources, f)
 
 
 def get_parser():
@@ -123,7 +119,7 @@ def main():
     bootstrap_servers = args.bootstrap_servers
     group = args.group
     sleep_time = args.sleep_time
-    filename = SOURCES + '/' + args.filename
+    filename = args.filename if args.filename else False
 
     # Run forever
     while True:
