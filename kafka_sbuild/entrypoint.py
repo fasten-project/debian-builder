@@ -190,14 +190,13 @@ class Analyser:
         """
         try:
             with open(self.callgraph_dir + 'report', 'r') as fd:
-                for line in fd:
-                    if line.startswith('#'):
-                        continue
-                    line = line.strip()
-                    log = line.split(': ')
+                lines = [l.strip().split(': ') for l in fd
+                        if not l.startswith('#')]
+                for log in lines:
                     if log[0] == 'time_elapsed':
                         if len(log) >= 3:
                             self.profiling_data['times'][log[1]] = log[2]
+                for log in lines:
                     if log[0] == 'build':
                         if log[1] == 'failed':
                             self.error_msg['phase'] = 'build'
