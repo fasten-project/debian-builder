@@ -34,7 +34,8 @@ def filter_sources(sources, release):
     return False
 
 
-def run(in_topic, out_topic, servers, group, filename):
+def run(in_topic, out_topic, servers, group, filename, sources={},
+        check_old=False):
     """Consume from a kafka topic metadata of source, filter them in order not
        to consume twice the same source, push the sources in another topic.
     """
@@ -42,22 +43,27 @@ def run(in_topic, out_topic, servers, group, filename):
     consumer = KafkaConsumer(
         in_topic,
         bootstrap_servers=servers.split(','),
-        auto_offset_reset='earliest',
+        auto_offset_reset='latest',
         enable_auto_commit=True,
         group_id=group,
         value_deserializer=lambda x: json.loads(x.decode('utf-8'))
     )
+    # Create consumer for output topic to get all the old messages
+    if check_old:
+        consumer_old = KafkaConsumer(
+            out_topic,
+            bootstrap_servers=servers.split(','),
+            auto_offset_reset='earliest',
+            value_deserializer=lambda x: json.loads(x.decode('utf-8'))
+        )
+        for message in consumer_old:
+            release = message.value
+            filter_sources(sources, release)
     # Create producer
     producer = KafkaProducer(
         bootstrap_servers=servers.split(','),
         value_serializer=lambda x: x.encode('utf-8')
     )
-    # Read the sources that has been already consumed
-    sources = {}
-    if filename:
-        if os.path.exists(filename):
-            with open(filename, 'r') as f:
-                sources = json.load(f)
 
     # Read messages
     for message in consumer:
@@ -73,6 +79,7 @@ def run(in_topic, out_topic, servers, group, filename):
             if filename:
                 with open(filename, 'w') as f:
                     json.dump(sources, f)
+    return sources
 
 
 def get_parser():
@@ -107,6 +114,13 @@ def get_parser():
         help="File to save sources metadata.",
         default='sources.json'
     )
+    parser.add_argument(
+        '-o'
+        '--check-old',
+        dest='check_old',
+        action='store_true',
+        help="Read messages from output topic before start",
+    )
     return parser
 
 
@@ -120,10 +134,22 @@ def main():
     group = args.group
     sleep_time = args.sleep_time
     filename = args.filename if args.filename else False
+    check_old = args.check_old
+
+    # Read the sources that has been already consumed
+    sources = {}
+    if filename:
+        if os.path.exists(filename):
+            with open(filename, 'r') as f:
+                sources = json.load(f)
 
     # Run forever
     while True:
-        run(in_topic, out_topic, bootstrap_servers, group, filename)
+        sources = run(
+            in_topic, out_topic, bootstrap_servers, group,
+            filename, sources, check_old
+        )
+        check_old = False
         time.sleep(sleep_time)
 
 
