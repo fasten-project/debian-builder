@@ -71,11 +71,12 @@ detect_packages() {
     NAMES=$(grep "Package:" debian/control | cut -d ":" -f2 | awk '{$1=$1};1')
     if [ "$NUM" -gt "1" ]; then
         for n in $NAMES; do
-            prefix="./debian/tmp/"
+            prefix="debian/tmp/"
             install_file="debian/$n.install"
             touch $BINARIES_PER_PKG/$n
             if [ -f $install_file ]; then
                 for path in $(dh-exec $install_file | cut -d ' ' -f1); do
+                    path=${path#"$prefix"}
                     for f in $(find $prefix$path -type f,l); do
                         x=$(basename -- "$f")
                         if [[ "$TOTAL_BIN" == *"$x"* ]]; then
