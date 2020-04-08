@@ -33,6 +33,43 @@ USED_BINARIES=''
 TOTAL_BIN=''
 HAS_DEBS=0
 
+detect_binary() {
+    local binary=$1
+    local res=$(find $PWD_SRC -name $binary -type f -executable -exec sh -c \
+        "file -i '{}' | grep -q 'executable; charset=binary'" \; -print | head -1)
+    if [ ! -z ${res// } ]; then
+        echo "$res"
+        return
+    fi
+    local res=$(find $PWD_SRC -name $binary -type f -exec sh -c \
+        "file -i '{}' | grep -q 'archive; charset=binary'" \; -print | head -1)
+    if [ ! -z ${res// } ]; then
+        echo "$res"
+        return
+    fi
+    local res=$(find $PWD_SRC -name $binary -type f -exec sh -c \
+        "file -i '{}' | grep -q 'sharedlib; charset=binary'" \; -print | head -1)
+    if [ ! -z ${res// } ]; then
+        echo "$res"
+        return
+    fi
+    for i in $(find $PWD_SRC -name $binary -type l); do
+        local origin=$(readlink $i)
+        if $(file -i $origin | grep -q 'executable; charset=binary'); then
+            echo "$origin"
+            return
+        fi
+        if $(file -i $origin | grep -q 'archive; charset=binary'); then
+            echo "$origin"
+            return
+        fi
+        if $(file -i $origin | grep -q 'sharedlib; charset=binary'); then
+            echo "$origin"
+            return
+        fi
+    done
+}
+
 init() {
     cd $SRC
     mkdir -p $BINARIES_PER_PKG
@@ -162,17 +199,8 @@ produce_callgraphs() {
                 awk '!a[$0]++' $binary/$bin.txt > foo
                 mv foo $binary/$bin.txt
                 cp $TOOL_DIR/$bin.cs $binary/$bin.cs
-                binary_file=$(find $PWD_SRC -name $bin -type f |head -1)
-                if ! cp $binary_file $binary/ ; then
-                    # Try to find the origin of the file (in case it's a symbolic link)
-                    for binary_file in $(find $PWD_SRC -name $bin -type l ); do
-                        link=$(readlink $binary_file)
-                        binary_file_origin=$(find $PWD_SRC -name $link |head -1)
-                        if cp $binary_file_origin $binary/; then
-                            break
-                        fi
-                    done
-                fi
+                binary_file=$(detect_binary "$bin")
+                cp $binary_file $binary/
             done
             if [ "$(find $binaries -name *.txt)" = "$(find $binaries -name *.txt -empty)" ]; then
                 echo "produce_callgraph: $pkg: failed: empty" >> $DEST_PKG/report
