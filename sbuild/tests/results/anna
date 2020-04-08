@@ -1,0 +1,8 @@
+tool: cscout
+build: success
+detect_binaries: success
+#binaries: 2
+#detect_packages_number: 1
+detect_packages: anna 
+analysis: anna.cs: success
+produce_callgraph: anna: success

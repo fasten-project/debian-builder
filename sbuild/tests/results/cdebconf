@@ -1,0 +1,37 @@
+tool: cscout
+build: success
+detect_binaries: success
+#binaries: 156
+#detect_packages_number: 10
+detect_packages: cdebconf cdebconf-gtk libdebconfclient0 libdebconfclient0-dev cdebconf-udeb cdebconf-priority libdebconfclient0-udeb cdebconf-text-udeb cdebconf-newt-udeb cdebconf-gtk-udeb 
+#analysis: debconf-communicate.cs: not in USED_BINARIES
+analysis: debconf-copydb.cs: success
+analysis: debconf-dumpdb.cs: success
+#analysis: debconf-escape.cs: not in USED_BINARIES
+#analysis: debconf-get-selections.cs: not in USED_BINARIES
+analysis: debconf-loadtemplate.cs: success
+#analysis: debconf-set-selections.cs: not in USED_BINARIES
+#analysis: debconf-show.cs: not in USED_BINARIES
+analysis: debconf.cs: success
+#analysis: dpkg-preconfigure.cs: not in USED_BINARIES
+#analysis: dpkg-reconfigure.cs: not in USED_BINARIES
+analysis: gtk.so.cs: success
+analysis: libdebconf.so.cs: success
+#analysis: libdebconfclient.a.cs: not in USED_BINARIES
+analysis: libdebconfclient.so.0.0.0.cs: success
+analysis: newt.so.cs: success
+#analysis: passthrough.so.cs: not in USED_BINARIES
+analysis: rfc822db.so.cs: success
+analysis: stack.so.cs: success
+analysis: text.so.cs: success
+#analysis: textdb.so.cs: not in USED_BINARIES
+produce_callgraph: cdebconf: success
+produce_callgraph: cdebconf-gtk: success
+produce_callgraph: cdebconf-gtk-udeb: failed: fcan
+produce_callgraph: cdebconf-newt-udeb: failed: fcan
+produce_callgraph: cdebconf-priority: failed: fcan
+produce_callgraph: cdebconf-text-udeb: failed: fcan
+produce_callgraph: cdebconf-udeb: failed: fcan
+produce_callgraph: libdebconfclient0: success
+produce_callgraph: libdebconfclient0-dev: success
+produce_callgraph: libdebconfclient0-udeb: failed: fcan
