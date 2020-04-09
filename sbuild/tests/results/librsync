@@ -1,10 +1,9 @@
 tool: cscout
 build: success
 detect_binaries: success
-#binaries: 15
+#binaries: 14
 #detect_packages_number: 4
-detect_packages: librsync1 librsync-dev librsync-dbg rdiff 
-#analysis: isprefix.driver.cs: not in USED_BINARIES
+detect_packages: librsync1 librsync-dev librsync-dbg rdiff
 analysis: librsync.so.1.0.2.cs: success
 analysis: rdiff.cs: success
 produce_callgraph: librsync-dbg: failed: fcan
