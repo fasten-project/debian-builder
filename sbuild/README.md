@@ -16,6 +16,7 @@ Build
 docker build -t sbuild .
 docker build -t sbuild-svf -f svf.Dockerfile .
 docker build -t sbuild-cscout -f cscout.Dockerfile .
+docker build -t sbuild-dynamic -f dynamic.Dockerfile .
 ```
 
 Run
@@ -62,3 +63,4 @@ Images in Dockerhub
 * **sbuild**: `schaliasos/sbuild`
 * **sbuild-svf**: `schaliasos/sbuild-svf:latest`
 * **sbuild-cscout**: `schaliasos/sbuild-cscout:latest`
+* **sbuild-dynamic**: `schaliasos/sbuild-dynamic:latest`

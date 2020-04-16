@@ -1,0 +1,61 @@
+#!/bin/bash
+# Parameters
+SRC=$1
+TOOL='svf'
+
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/base_analyzer"
+
+prepare_env() {
+    pip3 install setuptools
+    pip3 install pydot gprof2dot
+}
+
+build() {
+    printf "\n###Debug: build\n"
+    echo "tool: dynamic" >> $DEST_PKG/report
+    DEB_CFLAGS_SET="-fprofile-arcs -pg" DEB_CXXFLAGS_SET="-fprofile-arcs -pg" \
+        dpkg-buildpackage -b 2> error
+    cp error $DEST_PKG/build.war
+    echo "build: success" >> $DEST_PKG/report
+}
+
+analyze() {
+    printf "\n###Debug: analyze\n"
+    cd $PWD_SRC
+    for bin in $(find . -type f -executable); do
+        out=$(basename $bin)
+        mkdir -p $DEST_PKG/$out
+        if gprof $bin > profile.out; then
+            if gprof2dot -f prof -o graph.dot profile.out; then
+                dot2csv graph.dot $out.gprof.csv -p
+                cp $out.gprof.csv $DEST_PKG/$out
+            fi
+        fi
+        echo "" > temp123121
+        echo "#####################$bin##########################"
+        echo "#####################$out##########################"
+        valgrind --tool=callgrind --callgrind-out-file=./$out.txt $bin < temp123121
+        if [ -f $bin.txt ]; then
+            echo "#####################11111111111111##########################"
+            if gprof2dot -f callgrind -o graph.dot $out.txt; then
+                echo "#####################22222222222222##########################"
+                dot2csv graph.dot $out.callgrind.csv
+                cp $out.callgrind.csv $DEST_PKG/$out
+            fi
+        fi
+    done
+}
+
+main () {
+    TOOL_DIR="$PWD_SRC/dynamic_data"
+    init
+    prepare_env
+    build
+    analyze
+}
+
+main
+
+exit 0

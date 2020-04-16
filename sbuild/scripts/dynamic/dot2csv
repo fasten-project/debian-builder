@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+import argparse
+import csv
+import networkx as nx
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_dot")
+    parser.add_argument("output_csv")
+    parser.add_argument(
+        "-p", "--profile", action='store_true', help="Gprof profile"
+    )
+    args = parser.parse_args()
+    g = nx.drawing.nx_pydot.read_dot(args.input_dot)
+    with open(args.output_csv, 'w') as f:
+        writer = csv.writer(f)
+        edges = g.edges.data(False)
+        if args.profile:
+            nodes = {k: v.split('\\')[0].replace('"', '')
+                    for k, v in nx.get_node_attributes(g, 'label').items()}
+            edges = [(nodes[e[0]], nodes[e[1]]) for e in edges]
+        writer.writerows(edges)
