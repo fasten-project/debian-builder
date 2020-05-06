@@ -182,6 +182,15 @@ class Analyser:
         # Run sbuild
         cmd = sp.Popen(sbuild_options, stdout=sp.PIPE, stderr=sp.STDOUT)
         stdout, _ = cmd.communicate()
+        if cmd.returncode == 1:
+            message = 'Sbuild failed:\n{}'.format(stdout.decode(encoding='utf-8'))
+            print("{}: {}".format(
+                str(datetime.datetime.now()),
+                message)
+            )
+            self.error_msg['phase'] = 'run_sbuild'
+            self.error_msg['message'] = message
+            raise AnalyserError(message)
         #  print("sbuild stdout\n" + stdout.decode(encoding='utf-8'))
         os.chdir(old_cwd)
 
