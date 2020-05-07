@@ -57,6 +57,30 @@ produce_callgraph: <package>: failed: [missing deb|empty|fcan]
 produce_callgraph: <package>: success
 ```
 
+Produce Fasten Call Graphs
+--------------------------
+
+To produce call graphs for Debian C packages in
+[Fasten's format](https://github.com/fasten-project/fasten/wiki/Extended-Revision-Call-Graph-format#c),
+you should use the `schaliasos/sbuild-cscout` image.
+For example, to produce the call graph for the package `zlib1g-dev` of
+Debian buster release and for amd64 architecture, you should
+analyze the source of `zlib`.
+You should use the following command.
+
+```
+docker run -it --rm --privileged -v $(pwd)/callgraphs:/callgraphs \
+    schaliasos/sbuild-cscout sbuild --apt-update --no-apt-upgrade \
+    --no-apt-distupgrade --batch --stats-dir=/var/log/sbuild/stats \
+    --dist=buster --arch=amd64 zlib
+```
+
+The call graph will be generated in the following file.
+
+```
+callgraphs/zlib/buster/1\:1.2.11.dfsg-1/amd64/zlib1g-dev/fcg.json
+```
+
 Images in Dockerhub
 -------------------
 
