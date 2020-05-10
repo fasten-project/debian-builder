@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: debian-kafka-cscout-monster
+  namespace: fasten
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: debian
+      component: kafka-cscout-monster
+  template:
+    metadata:
+      labels:
+        app: debian
+        component: kafka-cscout-monster
+    spec:
+      containers:
+      - name: kafka-cscout
+        image: schaliasos/kafka-cscout
+        securityContext:
+          privileged: true
+        args: ["fasten.debian.filtered.test", "fasten.debian.cg.test.1", "fasten.debian.cg_errors.test.1", "kafka-0.kafka-headless.codefeedr:9092,kafka-1.kafka-headless.codefeedr:9092,kafka-2.kafka-headless.codefeedr:9092", "debian_kafka_cscout_1", "60", "--log-topic" "fasten.debian.log.test.1"]
+        resources:
+          limits:
+            memory: "8Gi"
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: MY_POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+      nodeSelector:
+        monster.node: "true"

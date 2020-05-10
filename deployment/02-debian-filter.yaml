@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: debian-filter
+  namespace: fasten
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: debian
+      component: filter
+  template:
+    metadata:
+      labels:
+        app: debian
+        component: filter
+    spec:
+      containers:
+      - name: filter
+        image: schaliasos/kafka-filter-debian
+        args: ["fasten.debian.releases.test", "fasten.debian.filtered.test", "kafka-0.kafka-headless.codefeedr:9092,kafka-1.kafka-headless.codefeedr:9092,kafka-2.kafka-headless.codefeedr:9092", "debian_filter", "60"]
+        resources:
+          limits:
+            memory: "1Gi"
