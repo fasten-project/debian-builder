@@ -314,9 +314,9 @@ class Analyser:
             self.package,
             phase
         ))
-        message = {'package': self.package, 'version': self.version,
-                   'datetime': str(datetime.datetime.now()),
-                   'phase': phase
+        message = {'pod': self.pod_name, 'package': self.package,
+                   'version': self.version, 'phase': phase,
+                   'datetime': str(datetime.datetime.now())
                   }
         self.producer.send(self.log_topic, json.dumps(message))
 
