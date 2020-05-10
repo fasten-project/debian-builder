@@ -5,6 +5,7 @@ import time
 import datetime
 import json
 import argparse
+import shutil
 import subprocess as sp
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
@@ -72,8 +73,10 @@ class Analyser:
             self._download_files()
             self._run_sbuild()
             self._check_analysis_result()
+            self._cleanup()
         except AnalyserError:
             self._produce_error_to_kafka()
+            self._cleanup()
 
     def _retrieve_page(self, url):
         """Returns a Debian Snapshot HTML page.
@@ -257,6 +260,26 @@ class Analyser:
         if self.status == 'done':
             print("{}: Call graph generated".format(
                 str(datetime.datetime.now()))
+            )
+
+    def _cleanup(self):
+        """Remove the downloaded sources and the call graphs from the
+        filesystem.
+        """
+        print("{}: Cleanup".format(
+            str(datetime.datetime.now()))
+        )
+        try:
+            shutil.rmtree(self.dir_name)
+        except OSError as e:
+            print("{}: {} - {}.".format(
+                str(datetime.datetime.now()), e.filename, e.strerror)
+            )
+        try:
+            shutil.rmtree(self.callgraph_dir)
+        except OSError as e:
+            print("{}: {} - {}.".format(
+                str(datetime.datetime.now()), e.filename, e.strerror)
             )
 
     def _produce_error_to_kafka(self):
