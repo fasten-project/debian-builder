@@ -37,7 +37,10 @@ class Analyser:
     """Produce a call graph from a Debian Package Release.
     """
 
-    def __init__(self, topic, error_topic, producer, release):
+    def __init__(self, topic, error_topic, producer, release, log_topic=False):
+        self.log_topic = log_topic
+        if self.log_topic:
+            self.pod_name = os.environ['MY_POD_NAME']
         self.status = ''
         self.topic = topic
         self.error_topic = error_topic
@@ -69,14 +72,20 @@ class Analyser:
         self.binary_pkgs = []
 
     def analyse(self):
+        if self.log_topic:
+            self._produce_log_to_kafka('begin')
         try:
             self._download_files()
             self._run_sbuild()
             self._check_analysis_result()
             self._cleanup()
+            if self.log_topic:
+                self._produce_log_to_kafka('complete')
         except AnalyserError:
             self._produce_error_to_kafka()
             self._cleanup()
+            if self.log_topic:
+                self._produce_log_to_kafka('failed')
 
     def _retrieve_page(self, url):
         """Returns a Debian Snapshot HTML page.
@@ -297,6 +306,20 @@ class Analyser:
         message['error']['profiling_data'] = self.profiling_data
         self.producer.send(self.error_topic, json.dumps(message))
 
+    def _produce_log_to_kafka(self, phase):
+        """Push log to kafka topic.
+        """
+        print("{}: Push log message to kafka topic: {}: {}".format(
+            str(datetime.datetime.now()),
+            self.package,
+            phase
+        ))
+        message = {'package': self.package, 'version': self.version,
+                   'datetime': str(datetime.datetime.now()),
+                   'phase': phase
+                  }
+        self.producer.send(self._produce_log_to_kafka, json.dumps(message))
+
     def _produce_cg_to_kafka(self, path):
         """Push call graph to kafka topic.
         """
@@ -322,7 +345,8 @@ def exit_with_error():
     sys.exit(1)
 
 
-def consume_from_kafka(in_topic, out_topic, err_topic, servers, group):
+def consume_from_kafka(in_topic, out_topic, err_topic, servers, group,
+                       log_topic=False):
     consumer = KafkaConsumer(
         in_topic,
         bootstrap_servers=servers.split(','),
@@ -340,7 +364,7 @@ def consume_from_kafka(in_topic, out_topic, err_topic, servers, group):
         print("{}: Consuming {}".format(
             str(datetime.datetime.now()), release)
         )
-        analyser = Analyser(out_topic, err_topic, producer, release)
+        analyser = Analyser(out_topic, err_topic, producer, release, log_topic)
         analyser.analyse()
 
 
@@ -374,6 +398,12 @@ def get_parser():
         type=int,
         help="Time to sleep in between each scrape (in sec)."
     )
+    parser.add_argument(
+        '--log-topic',
+        dest='log_topic',
+        type=str,
+        help="Kafka topic to write logs to."
+    )
     return parser
 
 
@@ -384,6 +414,7 @@ def main():
     in_topic = args.in_topic
     out_topic = args.out_topic
     err_topic = args.err_topic
+    log_topic = args.log_topic if args.log_topic else False
     bootstrap_servers = args.bootstrap_servers
     group = args.group
     sleep_time = args.sleep_time
@@ -391,7 +422,7 @@ def main():
     # Run forever
     while True:
         consume_from_kafka(in_topic, out_topic, err_topic, bootstrap_servers,
-                           group)
+                           group, log_topic)
         time.sleep(sleep_time)
 
 
