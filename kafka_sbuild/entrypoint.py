@@ -318,7 +318,7 @@ class Analyser:
                    'datetime': str(datetime.datetime.now()),
                    'phase': phase
                   }
-        self.producer.send(self._produce_log_to_kafka, json.dumps(message))
+        self.producer.send(self.log_topic, json.dumps(message))
 
     def _produce_cg_to_kafka(self, path):
         """Push call graph to kafka topic.
