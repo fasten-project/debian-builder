@@ -20,7 +20,7 @@ spec:
         image: schaliasos/kafka-cscout
         securityContext:
           privileged: true
-        args: ["fasten.debian.filtered.test", "fasten.debian.cg.test.1", "fasten.debian.cg_errors.test.1", "kafka-0.kafka-headless.codefeedr:9092,kafka-1.kafka-headless.codefeedr:9092,kafka-2.kafka-headless.codefeedr:9092", "debian_kafka_cscout_1", "60", "--log-topic" "fasten.debian.log.test.1"]
+        args: ["fasten.debian.filtered.test", "fasten.debian.cg.test.1", "fasten.debian.cg_errors.test.1", "kafka-0.kafka-headless.codefeedr:9092,kafka-1.kafka-headless.codefeedr:9092,kafka-2.kafka-headless.codefeedr:9092", "debian_kafka_cscout_2", "60", "--log-topic", "fasten.debian.log.test.1"]
         resources:
           limits:
             memory: "8Gi"
