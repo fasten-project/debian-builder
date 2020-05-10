@@ -169,8 +169,8 @@ produce_callgraphs() {
     " > custom_deps.json
     for pkg in $(ls $BINARIES_PER_PKG); do
             mkdir -p $PACKAGES/$pkg
-            if ! cp $PWD_PKG/${pkg}_*.deb $PACKAGES/$pkg ; then
-                if ! cp $PWD_PKG/${pkg}_*.udeb $PACKAGES/$pkg ; then
+            if ! mv $PWD_PKG/${pkg}_*.deb $PACKAGES/$pkg ; then
+                if ! mv $PWD_PKG/${pkg}_*.udeb $PACKAGES/$pkg ; then
                     echo "produce_callgraph: $pkg: failed: missing deb" >> $DEST_PKG/report
                     rm -rf $PACKAGES/$pkg
                     continue
