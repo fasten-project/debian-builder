@@ -6,6 +6,7 @@ import datetime
 import json
 import argparse
 import shutil
+import urllib
 import subprocess as sp
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
@@ -56,7 +57,9 @@ class Analyser:
         self.callgraph_dir = '/{}/{}/{}/{}/{}/'.format(
             'callgraphs', self.package, self.dist, self.version, self.arch
         )
-        self.url = snap_url.format(self.package, self.version)
+        self.url = snap_url.format(
+            self.package, urllib.parse.quote(self.version)
+        )
         self.urls = []
         self.error_msg = {
                 'package': self.package,
