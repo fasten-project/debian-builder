@@ -73,6 +73,7 @@ class Analyser:
         }
         self.profiling_data = {'times': {}}
         self.binary_pkgs = []
+        self.old_cwd = os.getcwd()
 
     def analyse(self):
         if self.log_topic:
@@ -81,10 +82,12 @@ class Analyser:
             self._download_files()
             self._run_sbuild()
             self._check_analysis_result()
+            os.chdir(self.old_cwd)
             self._cleanup()
             if self.log_topic:
                 self._produce_log_to_kafka('complete')
         except AnalyserError:
+            os.chdir(self.old_cwd)
             self._produce_error_to_kafka()
             self._cleanup()
             if self.log_topic:
@@ -207,7 +210,7 @@ class Analyser:
             self.error_msg['message'] = message
             raise AnalyserError(message)
         #  print("sbuild stdout\n" + stdout.decode(encoding='utf-8'))
-        os.chdir(old_cwd)
+        os.chdir(self.old_cwd)
 
     def _check_analysis_result(self):
         """Checks if call graph generated successfully.
