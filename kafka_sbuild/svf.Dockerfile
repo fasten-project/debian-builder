@@ -1,7 +1,7 @@
 # vim:set ft=dockerfile:
 FROM schaliasos/sbuild-svf:latest
 
-RUN pip3 install requests BeautifulSoup4 kafka-python
+RUN pip3 install requests BeautifulSoup4 kafka-python fasten
 
 COPY ./entrypoint.py entrypoint.py
 
