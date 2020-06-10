@@ -2,7 +2,6 @@
 # Parameters
 SRC=$1
 R_OPTION_PARAM="cgraph.txt?all=1&n=p&type=1&defined=1&nodes=1"
-FCAN_EXTRA_OPTIONS='-d'
 TOOL='cscout'
 
 DIR="${BASH_SOURCE%/*}"
