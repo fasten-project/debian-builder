@@ -109,6 +109,9 @@ detect_packages() {
     if [ "$NUM" -gt "1" ]; then
         for n in $NAMES; do
             prefix="debian/tmp/"
+            if [ ! -d "$prefix" ]; then
+               prefix="debian/$n"
+            fi
             install_file="debian/$n.install"
             touch $BINARIES_PER_PKG/$n
             deb=$(find $PWD_PKG -name $n*deb | head -1)
