@@ -80,13 +80,8 @@ init() {
 
 detect_binaries() {
     printf "\n###Debug: detect_binaries\n"
-    EXECUTABLES=$(find -type f -executable -exec sh -c \
-        "file -i '{}' | grep -q 'executable; charset=binary'" \; -print)
-    ARCHIVES=$(find -type f -exec sh -c \
-        "file -i '{}' | grep -q 'archive; charset=binary'" \; -print)
-    SHAREDLIBS=$(find -type f -exec sh -c \
-        "file -i '{}' | grep -q 'sharedlib; charset=binary'" \; -print)
-    BINARIES="${EXECUTABLES} ${ARCHIVES} ${SHAREDLIBS}"
+    BINARIES=$(find -type f -executable -exec sh -c \
+        "file -i '{}' | egrep -q '(executable|archive|sharedlib); charset=binary'" \; -print)
     SYMLINKED=$(find -type l -exec sh -c \
         "file -i '{}' | grep -q 'charset=binary'" \; -print)
     TOTAL_BIN="${BINARIES} ${SYMLINKED}"
@@ -114,7 +109,7 @@ detect_packages() {
             fi
             install_file="debian/$n.install"
             touch $BINARIES_PER_PKG/$n
-            deb=$(find $PWD_PKG -name $n*deb | head -1)
+            deb=$(find $PWD_PKG -maxdepth 1 -name "$n_*deb" | head -1)
             if [ -f $deb ]; then
                 for path in $(dpkg --contents $deb | awk '{ print $6 }'); do
                     for i in $(find $prefix -name $(basename -- "$path") -type f,l); do
