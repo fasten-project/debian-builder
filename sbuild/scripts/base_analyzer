@@ -78,7 +78,6 @@ init() {
     mkdir -p $DEST_PKG
 }
 
-# TODO Maybe we should look only inside debian directory
 detect_binaries() {
     printf "\n###Debug: detect_binaries\n"
     BINARIES=$(find $PWD_SRC/debian -not -name "*.debug" -type f -exec sh -c \
