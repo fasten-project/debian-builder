@@ -117,7 +117,7 @@ detect_packages() {
             deb=$(find $PWD_PKG -maxdepth 1 -name "$n_*deb" | head -1)
             if [ -f $deb ]; then
                 binaries_of_deb=$(comm -12 \
-                    <(dpkg --contents $deb | awk '{ print  }' | xargs basename -a | sort) \
+                    <(dpkg --contents $deb | awk '{print $NF}' | xargs basename -a | sort) \
                     <(echo "$TOTAL_BIN" | xargs basename -a | sort) \
                     | uniq)
                 echo "$binaries_of_deb" > $BINARIES_PER_PKG/$n
