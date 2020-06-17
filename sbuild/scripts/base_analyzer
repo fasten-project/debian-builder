@@ -78,6 +78,7 @@ init() {
     mkdir -p $DEST_PKG
 }
 
+# TODO Maybe we should look only inside debian directory
 detect_binaries() {
     printf "\n###Debug: detect_binaries\n"
     BINARIES=$(find -type f -exec sh -c \
@@ -173,11 +174,11 @@ produce_callgraphs() {
             for bin in $(cat binaries_per_pkg/$pkg); do
                 binary="$binaries/${bin%%\.*}"
                 mkdir -p $binary
-                cp $TOOL_DIR/$bin.txt $binary/$bin.txt
-                awk '!a[$0]++' $binary/$bin.txt > foo
-                mv foo $binary/$bin.txt
-                cp $TOOL_DIR/$bin.cs $binary/$bin.cs
-                binary_file=$(detect_binary "$bin")
+                cp $TOOL_DIR/$bin.txt $binary/$bin.txt && \
+                awk '!a[$0]++' $binary/$bin.txt > foo && \
+                mv foo $binary/$bin.txt && \
+                cp $TOOL_DIR/$bin.cs $binary/$bin.cs && \
+                binary_file=$(detect_binary "$bin") && \
                 cp $binary_file $binary/
             done
             cp $PWD_PKG/*.dsc $PACKAGES/$pkg/$pkg.dsc
