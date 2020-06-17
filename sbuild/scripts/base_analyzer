@@ -81,9 +81,11 @@ init() {
 # TODO Maybe we should look only inside debian directory
 detect_binaries() {
     printf "\n###Debug: detect_binaries\n"
-    BINARIES=$(find -type f -exec sh -c \
+    BINARIES=$(find $PWD_SRC/debian -not -name "*.debug" -type f -exec sh -c \
         "file -i '{}' | egrep -q '(executable|archive|sharedlib); charset=binary'" \; -print)
-    SYMLINKED=$(find -type l -exec sh -c \
+    SYMLINKED=$(find $PWD_SRC/debian -not -name "*.gz" -not -name "*.tar" -not -name "*.zip" \
+        -not -name "*.debug" \
+        -type l -exec sh -c \
         "file -i '{}' | grep -q 'charset=binary'" \; -print)
     TOTAL_BIN="${BINARIES} ${SYMLINKED}"
     count=$(wc -w <<< "$TOTAL_BIN")
