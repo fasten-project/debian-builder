@@ -80,7 +80,7 @@ init() {
 
 detect_binaries() {
     printf "\n###Debug: detect_binaries\n"
-    BINARIES=$(find -type f -executable -exec sh -c \
+    BINARIES=$(find -type f -exec sh -c \
         "file -i '{}' | egrep -q '(executable|archive|sharedlib); charset=binary'" \; -print)
     SYMLINKED=$(find -type l -exec sh -c \
         "file -i '{}' | grep -q 'charset=binary'" \; -print)
