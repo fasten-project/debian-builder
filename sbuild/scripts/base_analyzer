@@ -113,13 +113,13 @@ detect_packages() {
             fi
             # install_file="debian/$n.install" many packages don't use install files
             touch $BINARIES_PER_PKG/$n
-            deb=$(find $PWD_PKG -maxdepth 1 -name "$n_*deb" | head -1)
+            deb=$(find $PWD_PKG -maxdepth 1 -name "${n}_*deb" | head -1)
             if [ -f $deb ]; then
                 binaries_of_deb=$(comm -12 \
                     <(dpkg --contents $deb | awk '{print $NF}' | xargs basename -a | sort) \
                     <(echo "$TOTAL_BIN" | xargs basename -a | sort) \
                     | uniq)
-                echo "$binaries_of_deb" > $BINARIES_PER_PKG/$n
+                echo "$binaries_of_deb" >> $BINARIES_PER_PKG/$n
                 USED_BINARIES="${USED_BINARIES} ${binaries_of_deb}"
             fi
         done
