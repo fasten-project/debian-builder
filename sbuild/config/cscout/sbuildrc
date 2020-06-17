@@ -12,7 +12,8 @@ $core_depends = [
                   'python3-pip',
                   'vim',
                   'dh-exec',
-                  'file'
+                  'file',
+                  'time'
                 ];
 
 $external_commands = {
