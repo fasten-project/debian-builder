@@ -351,11 +351,11 @@ class CScoutKafkaPlugin(KafkaPlugin):
             self.download()
             self._run_sbuild()
             self._check_analysis_result()
-            message = self.create_message(record, {"status": "end"})
+            message = self.create_message(record, {"status": "success"})
             self.emit_message(self.log_topic, message, "complete", "")
         except PluginError:
             self._produce_error_to_kafka()
-            message = self.create_message(record, {"status": "end"})
+            message = self.create_message(record, {"status": "failed"})
             self.emit_message(self.log_topic, message, "failed", "")
         os.chdir(self.state.old_cwd)
         self._cleanup()
@@ -419,8 +419,6 @@ def main():
     # Run forever
     while True:
         plugin.consume_messages()
-        consume_from_kafka(in_topic, out_topic, err_topic, bootstrap_servers,
-                           group, log_topic)
         time.sleep(sleep_time)
 
 
