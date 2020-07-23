@@ -112,8 +112,7 @@ def get_parser():
         '-f',
         '--filename',
         dest='filename',
-        help="File to save sources metadata.",
-        default='sources.json'
+        help="File to save sources metadata."
     )
     parser.add_argument(
         '-o',
