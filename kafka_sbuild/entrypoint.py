@@ -7,10 +7,12 @@ import json
 import argparse
 import shutil
 import urllib
+import requests
 import subprocess as sp
 from fasten.plugins.kafka import KafkaPlugin
 from fasten.plugins.base import PluginError
-from requests import get
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 from requests.exceptions import RequestException
 from contextlib import closing
 from bs4 import BeautifulSoup
@@ -92,7 +94,13 @@ class CScoutKafkaPlugin(KafkaPlugin):
         """Returns a Debian Snapshot HTML page.
         """
         try:
-            with closing(get(url, stream=True)) as resp:
+            session = requests.Session()
+            retry = Retry(connect=5, backoff_factor=0.5)
+            adapter = HTTPAdapter(max_retries=retry)
+            session.mount('http://', adapter)
+            session.mount('https://', adapter)
+
+            with closing(session.get(url, stream=True)) as resp:
                 if resp.status_code != 200:
                     m = '{0}: Error during requests to {1} : status {2}'.format(
                         str(datetime.datetime.now()),
