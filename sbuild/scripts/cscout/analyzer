@@ -101,6 +101,10 @@ main () {
     SECONDS=0
     P=0
     init
+    copy_source
+    TOTAL=$(($SECONDS-$P))
+    echo "time_elapsed: copy: $TOTAL" >> $DEST_PKG/report
+    P=$SECONDS
     build
     TOTAL=$(($SECONDS-$P))
     echo "time_elapsed: build: $TOTAL" >> $DEST_PKG/report

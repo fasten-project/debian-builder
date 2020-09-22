@@ -53,6 +53,10 @@ COPY ./config/cscout/fstab /etc/schroot/sbuild/fstab
 run mkdir -p /callgraphs
 RUN chown -R builder /callgraphs
 RUN chmod o+w /callgraphs/
+# DIRECTORY TO SAVE SOURCES
+run mkdir -p /sources
+RUN chown -R builder /sources
+RUN chmod o+w /sources/
 
 USER builder
 WORKDIR /home/builder

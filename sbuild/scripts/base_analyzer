@@ -43,8 +43,11 @@ PKG="$NAME"
 
 # Directories
 DEST="/callgraphs/"
+DEST_SRC="/sources/"
+INIT_CHARACTER="${PKG:0:1}"
 # $DEST_PKG/binary_package/{build.err,svf.err,fcan.err,status,fcg.json}
 DEST_PKG="$DEST$PKG/$RELEASE/$VERSION/$ARCH"
+DEST_SRC="$DEST_SRC$RELEASE/$INIT_CHARACTER/$PKG/$VERSION/"
 BINARIES_PER_PKG="$PWD_SRC/binaries_per_pkg"
 TOOL_DIR=""
 PACKAGES="$PWD_PKG/packages"
@@ -54,6 +57,11 @@ SYMLINKED=''
 USED_BINARIES=''
 TOTAL_BIN=''
 HAS_DEBS=0
+
+copy_source() {
+    mkdir -p $DEST_SRC
+    cp -r $PWD_SRC/* $DEST_SRC
+}
 
 detect_binary() {
     local binary=$1
