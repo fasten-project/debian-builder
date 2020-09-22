@@ -31,6 +31,7 @@ import shutil
 import urllib
 import requests
 import subprocess as sp
+from distutils.dir_util import copy_tree
 from fasten.plugins.kafka import KafkaPlugin
 from fasten.plugins.base import PluginError
 from requests.adapters import HTTPAdapter
@@ -72,6 +73,9 @@ class PackageState():
         self.callgraph_dir = '/{}/{}/{}/{}/{}/'.format(
             'callgraphs', self.package, self.dist, self.version, self.arch
         )
+        self.source_dir = '/{}/{}/{}/{}/{}'.format(
+            'sources', self.dist, self.package[0], self.package, self.version
+        )
         self.url = snap_url.format(
             self.package, urllib.parse.quote(self.version)
         )
@@ -88,13 +92,14 @@ class CScoutKafkaPlugin(KafkaPlugin):
     """Produce C call graphs from Debian package releases.
     """
     def __init__(self, bootstrap_servers, consume_topic, produce_topic,
-                 log_topic, error_topic, group_id):
+                 log_topic, error_topic, group_id, directory):
         super().__init__(bootstrap_servers)
         self.consume_topic = consume_topic
         self.produce_topic = produce_topic
         self.log_topic = log_topic
         self.error_topic = error_topic
         self.group_id = group_id
+        self.directory = directory
         self.set_consumer()
         self.set_producer()
         # State per package
@@ -232,6 +237,8 @@ class CScoutKafkaPlugin(KafkaPlugin):
         # Run sbuild
         cmd = sp.Popen(sbuild_options, stdout=sp.PIPE, stderr=sp.STDOUT)
         stdout, _ = cmd.communicate()
+        if self.directory != '':
+            self._copy_sources()
         if cmd.returncode == 1:
             message = 'Sbuild failed:\n{}'.format(stdout.decode(encoding='utf-8'))
             m = "{}: {}".format(
@@ -242,6 +249,20 @@ class CScoutKafkaPlugin(KafkaPlugin):
             self.state.error_msg['message'] = message
             raise PluginError(message)
         os.chdir(self.state.old_cwd)
+
+    def _copy_sources(self):
+        try:
+            if os.path.isdir(self.state.source_dir):
+                dst = os.path.join(self.directory, self.state.source_dir[1:])
+                copy_tree(self.state.source_dir, dst)
+                shutil.rmtree(self.state.source_dir)
+        except:
+            m = "{}: {} - {}.".format(
+                str(datetime.datetime.now()),
+                "Copy sources error",
+                "Cannot copy {}".format(self.state.source_dir)
+            )
+            self.log(m)
 
     def _check_analysis_result(self):
         """Checks if call graph generated successfully.
@@ -427,6 +448,11 @@ def get_parser():
         'sleep_time',
         type=int,
         help="Time to sleep in between each scrape (in sec)."
+    )
+    parser.add_argument(
+        'directory',
+        type=str,
+        help="Path to base directory where sources will be saved"
     )
     return parser
 
