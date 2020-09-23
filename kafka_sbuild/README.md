@@ -23,24 +23,48 @@ How to run
 ----------
 
 ```bash
-usage: docker run -it --net=host --privileged schaliasos/kafka-svf
-    in_topic out_topic err_topic bootstrap_servers group sleep_time [-h]
-
-positional arguments:
-  in_topic           Kafka topic to read from.
-  out_topic          Kafka topic to write to.
-  err_topic          Kafka topic to write errors to.
-  bootstrap_servers  Kafka servers, comma separated.
-  group              Kafka consumer group to which the consumer belongs.
-  sleep_time         Time to sleep in between each scrape (in sec).
+usage: Consume Debian packages releases messages of a Kafka topic. [-h] [-i IN_TOPIC] [-o OUT_TOPIC]
+                                                                   [-e ERR_TOPIC] [-l LOG_TOPIC]
+                                                                   [-b BOOTSTRAP_SERVERS] [-g GROUP]
+                                                                   [-s SLEEP_TIME] [-d DIRECTORY]
+                                                                   [-D DEBUG]
 
 optional arguments:
-  -h, --help         show this help message and exit
+  -h, --help            show this help message and exit
+  -i IN_TOPIC, --in-topic IN_TOPIC
+                        Kafka topic to read from.
+  -o OUT_TOPIC, --out-topic OUT_TOPIC
+                        Kafka topic to write to.
+  -e ERR_TOPIC, --err-topic ERR_TOPIC
+                        Kafka topic to write errors to.
+  -l LOG_TOPIC, --log-topic LOG_TOPIC
+                        Kafka topic to write logs to.
+  -b BOOTSTRAP_SERVERS, --bootstrap-servers BOOTSTRAP_SERVERS
+                        Kafka servers, comma separated.
+  -g GROUP, --group GROUP
+                        Kafka consumer group to which the consumer belongs.
+  -s SLEEP_TIME, --sleep-time SLEEP_TIME
+                        Time to sleep in between each consuming (in sec).
+  -d DIRECTORY, --directory DIRECTORY
+                        Path to base directory where sources will be saved.
+  -D DEBUG, --debug DEBUG
+                        Debug mode, you should provide a JSON with a release.
 ```
 
 For example:
 
 ```bash
 docker run -it --net=host --privileged schaliasos/kafka-svf \
-    cf_deb_release cf_fasten_cg cf_errors localhost:9092 group-1 60
+    -i cf_deb_release -o cf_fasten_cg -e cf_errors -l cf_logs -b localhost:9092 -g group-1 -s 60
+```
+
+Debug Example
+-------------
+
+```bash
+sudo docker run -it --privileged \
+    -v $(pwd)/temp/debug:/home/builder/debug \
+    -v $(pwd)/temp/debian:/mnt/fasten/debian \
+    kafka-cscout --directory /mnt/fasten/debian \
+    --debug "{'package': 'anna', 'version': '1.71', 'arch': 'amd64', 'release': 'buster', 'source': 'anna', 'source_version': '1.71', 'date': ''}"
 ```
