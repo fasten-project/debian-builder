@@ -77,6 +77,9 @@ class PackageState():
         self.source_dir = '/{}/{}/{}/{}/{}'.format(
             'sources', self.dist, self.package[0], self.package, self.version
         )
+        self.dst = "sources/{}/{}/{}".format(
+            self.package[0], self.package, self.version
+        )
         self.url = snap_url.format(
             self.package, urllib.parse.quote(self.version)
         )
@@ -262,7 +265,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
     def _copy_sources(self):
         try:
             if os.path.isdir(self.state.source_dir):
-                dst = os.path.join(self.directory, self.state.source_dir[1:])
+                dst = os.path.join(self.directory, self.state.dst)
                 os.makedirs(dst, exist_ok=True)
                 copy_tree(self.state.source_dir, dst)
                 shutil.rmtree(self.state.source_dir)
@@ -396,6 +399,8 @@ class CScoutKafkaPlugin(KafkaPlugin):
             self.state.error_msg['message'] = message
             raise PluginError(message)
         call_graph['profiling_data'] = self.state.profiling_data
+        dst = os.path.join(self.directory, self.state.dst)
+        call_graph['sourcePath'] = dst
         message = self.create_message(self.state.record, {"payload": call_graph})
         self.emit_message(self.produce_topic, message, "succeed", "")
 
