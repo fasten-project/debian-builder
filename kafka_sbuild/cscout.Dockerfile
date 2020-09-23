@@ -24,7 +24,17 @@
 FROM schaliasos/sbuild-cscout:latest
 
 RUN pip3 install requests BeautifulSoup4 kafka-python fasten
+RUN sudo pip3 install requests BeautifulSoup4 kafka-python fasten
+
+# DIRECTORY TO SAVE DEBUG FILES
+run mkdir -p /home/builder/debug
+RUN chown -R builder /home/builder/debug
+RUN chmod o+w /home/builder/debug/
+# DIRECTORY TO SAVE DEBUG SOURCES
+run mkdir -p /home/builder/debian
+RUN chown -R builder /home/builder/debian
+RUN chmod o+w /home/builder/debian/
 
 COPY ./entrypoint.py entrypoint.py
 
-ENTRYPOINT ["python3", "entrypoint.py"]
+ENTRYPOINT ["sudo", "python3", "entrypoint.py"]

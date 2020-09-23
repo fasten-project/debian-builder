@@ -30,6 +30,7 @@ import argparse
 import shutil
 import urllib
 import requests
+import ast
 import subprocess as sp
 from distutils.dir_util import copy_tree
 from fasten.plugins.kafka import KafkaPlugin
@@ -92,7 +93,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
     """Produce C call graphs from Debian package releases.
     """
     def __init__(self, bootstrap_servers, consume_topic, produce_topic,
-                 log_topic, error_topic, group_id, directory):
+                 log_topic, error_topic, group_id, directory, debug):
         super().__init__(bootstrap_servers)
         self.consume_topic = consume_topic
         self.produce_topic = produce_topic
@@ -100,8 +101,16 @@ class CScoutKafkaPlugin(KafkaPlugin):
         self.error_topic = error_topic
         self.group_id = group_id
         self.directory = directory
-        self.set_consumer()
-        self.set_producer()
+        self.debug = debug
+        if not debug:
+            self.set_consumer()
+            self.set_producer()
+        if debug:
+            self.consume_topic = "consume_topic"
+            self.produce_topic = "produce_topic"
+            self.log_topic = "log_topic"
+            self.error_topic = "error_topic"
+            os.makedirs("debug", exist_ok=True)
         # State per package
         self.state = None
 
@@ -254,6 +263,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
         try:
             if os.path.isdir(self.state.source_dir):
                 dst = os.path.join(self.directory, self.state.source_dir[1:])
+                os.makedirs(dst, exist_ok=True)
                 copy_tree(self.state.source_dir, dst)
                 shutil.rmtree(self.state.source_dir)
         except:
@@ -413,46 +423,75 @@ class CScoutKafkaPlugin(KafkaPlugin):
         # End
         self.state = None
 
+    def emit_message(self, topic, msg, phase, log_msg):
+        if self.debug:
+            self.log("{}: Phase: {} Sent: {} to {}".format(
+                str(datetime.datetime.now()), phase, log_msg, topic
+            ))
+            json.dump(msg, open("/home/builder/debug/" + topic + ".json", 'a'))
+        else:
+            super().emit_message(topic, msg, phase, log_msg)
+
 
 def get_parser():
     parser = argparse.ArgumentParser(
         "Consume Debian packages releases messages of a Kafka topic."
     )
-    parser.add_argument('in_topic', type=str, help="Kafka topic to read from.")
     parser.add_argument(
-        'out_topic',
+        '-i',
+        '--in-topic',
+        type=str,
+        help="Kafka topic to read from."
+    )
+    parser.add_argument(
+        '-o',
+        '--out-topic',
         type=str,
         help="Kafka topic to write to."
     )
     parser.add_argument(
-        'err_topic',
+        '-e',
+        '--err-topic',
         type=str,
         help="Kafka topic to write errors to."
     )
     parser.add_argument(
-        'log_topic',
+        '-l',
+        '--log-topic',
         type=str,
         help="Kafka topic to write logs to."
     )
     parser.add_argument(
-        'bootstrap_servers',
+        '-b',
+        '--bootstrap-servers',
         type=str,
         help="Kafka servers, comma separated."
     )
     parser.add_argument(
-        'group',
+        '-g',
+        '--group',
         type=str,
         help="Kafka consumer group to which the consumer belongs."
     )
     parser.add_argument(
-        'sleep_time',
+        '-s',
+        '--sleep-time',
         type=int,
-        help="Time to sleep in between each scrape (in sec)."
+        default=60,
+        help="Time to sleep in between each consuming (in sec)."
     )
     parser.add_argument(
-        'directory',
+        '-d',
+        '--directory',
         type=str,
-        help="Path to base directory where sources will be saved"
+        default='',
+        help="Path to base directory where sources will be saved."
+    )
+    parser.add_argument(
+        '-D',
+        '--debug',
+        type=str,
+        help="Debug mode, you should provide a JSON with a release."
     )
     return parser
 
@@ -464,18 +503,37 @@ def main():
     in_topic = args.in_topic
     out_topic = args.out_topic
     err_topic = args.err_topic
-    log_topic = args.log_topic if args.log_topic else False
+    log_topic = args.log_topic
     bootstrap_servers = args.bootstrap_servers
     group = args.group
     sleep_time = args.sleep_time
+    directory = args.directory
+    debug = args.debug
+    mandatory_args = (
+        in_topic, out_topic, err_topic, log_topic, bootstrap_servers, group
+    )
 
-    plugin = CScoutKafkaPlugin(bootstrap_servers, in_topic, out_topic,
-                               log_topic, err_topic, group)
+    # Handle options
+    if (debug and any(x for x in mandatory_args)):
+        message = "You cannot use any other argument with --debug option."
+        raise parser.error(message)
+    if (any(x for x in mandatory_args) and not all(x for x in mandatory_args)):
+        message = "You should always use -i, -o, -e, -l, -b, and -g together."
+        raise parser.error(message)
 
-    # Run forever
-    while True:
-        plugin.consume_messages()
-        time.sleep(sleep_time)
+    plugin = CScoutKafkaPlugin(
+        bootstrap_servers, in_topic, out_topic,
+        log_topic, err_topic, group, directory, debug
+    )
+
+    if debug:
+        record = ast.literal_eval(debug)
+        plugin.consume(record)
+    else:
+        # Run forever
+        while True:
+            plugin.consume_messages()
+            time.sleep(sleep_time)
 
 
 if __name__ == "__main__":
