@@ -44,10 +44,12 @@ PKG="$NAME"
 # Directories
 DEST="/callgraphs/"
 DEST_SRC="/sources/"
+RESULTS="/results/"
 INIT_CHARACTER="${PKG:0:1}"
 # $DEST_PKG/binary_package/{build.err,svf.err,fcan.err,status,fcg.json}
 DEST_PKG="$DEST$PKG/$RELEASE/$VERSION/$ARCH"
 DEST_SRC="$DEST_SRC$RELEASE/$INIT_CHARACTER/$PKG/$VERSION/"
+RESULTS="$RESULTS$RELEASE/$INIT_CHARACTER/$PKG/$VERSION/$ARCH"
 BINARIES_PER_PKG="$PWD_SRC/binaries_per_pkg"
 TOOL_DIR=""
 PACKAGES="$PWD_PKG/packages"
@@ -224,6 +226,8 @@ produce_callgraphs() {
         if fcan $FCAN_EXTRA_OPTIONS -c custom_deps.json -s $PKG -a $TOOL \
             $deb $dsc $changelog $binaries 2> fcan_error; then
             cp can_cgraph.json $DEST_PKG/$d/fcg.json
+            mkdir -p $RESULTS/$d/
+            cp can_cgraph.json $RESULTS/$d/file.json
             echo "produce_callgraph: $d: success" >> $DEST_PKG/report
         else
             # It will catch all the errors, such as when a packages

@@ -57,6 +57,10 @@ RUN chmod o+w /callgraphs/
 run mkdir -p /sources
 RUN chown -R builder /sources
 RUN chmod o+w /sources/
+# DIRECTORY TO SAVE CALL-GRAPHS RESULTS
+run mkdir -p /results
+RUN chown -R builder /results
+RUN chmod o+w /results/
 
 USER builder
 WORKDIR /home/builder
