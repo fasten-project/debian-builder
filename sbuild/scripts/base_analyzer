@@ -227,7 +227,7 @@ produce_callgraphs() {
             $deb $dsc $changelog $binaries 2> fcan_error; then
             cp can_cgraph.json $DEST_PKG/$d/fcg.json
             mkdir -p $RESULTS/$d/
-            cp can_cgraph.json $RESULTS/$d/file.json
+            # cp can_cgraph.json $RESULTS/$d/file.json
             echo "produce_callgraph: $d: success" >> $DEST_PKG/report
         else
             # It will catch all the errors, such as when a packages
