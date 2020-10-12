@@ -64,24 +64,30 @@ class PackageState():
     """
     def __init__(self, record):
         self.record = record
-        self.package = record['source']
-        self.version = record['source_version']
+        self.package = record['package']
+        self.version = record['version']
+        self.dist = record['release']
+        self.source = record['source']
+        self.sversion = record['source_version']
         self.dist = record['release']
         self.arch = record['arch']
         self.dir_name = '{}-{}-{}-{}'.format(
-            self.package, self.dist, self.arch, self.version
+            self.source, self.dist, self.arch, self.sversion
         )
         self.callgraph_dir = '/{}/{}/{}/{}/{}/'.format(
-            'callgraphs', self.package, self.dist, self.version, self.arch
+            'callgraphs', self.source, self.dist, self.sversion, self.arch
         )
         self.source_dir = '/{}/{}/{}/{}/{}'.format(
-            'sources', self.dist, self.package[0], self.package, self.version
+            'sources', self.dist, self.source[0], self.source, self.sversion
         )
         self.dst = "sources/{}/{}/{}".format(
-            self.package[0], self.package, self.version
+            self.source[0], self.source, self.sversion
+        )
+        self.cg_dst = "callgraphs/{}/{}/{}/{}/{}".format(
+            self.package[0], self.package, self.dist, self.version, self.arch
         )
         self.url = snap_url.format(
-            self.package, urllib.parse.quote(self.version)
+            self.source, urllib.parse.quote(self.sversion)
         )
         self.urls = []
         self.profiling_data = {'times': {}}
@@ -388,6 +394,11 @@ class CScoutKafkaPlugin(KafkaPlugin):
         try:
             with open(path + 'fcg.json', 'r') as f:
                 call_graph = json.load(f)
+            if self.directory != '':
+                dst = os.path.join(self.directory, self.state.cg_dst)
+                os.makedirs(dst, exist_ok=True)
+                with open(os.path.join(dst, 'file.json'), 'w') as f:
+                    json.dump(call_graph, f)
         except FileNotFoundError:
             message = "File not found: " + path + "fcg.json"
             m = "{}: {}".format(
@@ -398,10 +409,23 @@ class CScoutKafkaPlugin(KafkaPlugin):
             self.state.error_msg['phase'] = 'read_fcg'
             self.state.error_msg['message'] = message
             raise PluginError(message)
+        except:
+            m = "{}: {} - {}.".format(
+                str(datetime.datetime.now()),
+                "Copy call graph error",
+                "Cannot copy {}".format(self.state.cg_dst)
+            )
+            self.log(m)
         call_graph['profiling_data'] = self.state.profiling_data
         dst = os.path.join(self.directory, self.state.dst)
         call_graph['sourcePath'] = dst
-        message = self.create_message(self.state.record, {"payload": call_graph})
+        if self.directory != '':
+            cg_dst = os.path.join(self.directory, self.state.cg_dst)
+            message = self.create_message(
+                self.state.record, {"payload": {"dir": cg_dst}}
+            )
+        else:
+            message = self.create_message(self.state.record, {"payload": call_graph})
         self.emit_message(self.produce_topic, message, "succeed", "")
 
     def consume(self, record):
