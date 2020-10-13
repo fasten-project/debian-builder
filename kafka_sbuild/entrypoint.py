@@ -443,6 +443,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
         call_graph['sourcePath'] = dst
         if self.directory != '':
             cg_dst = os.path.join(self.directory, self.state.cg_dst)
+            cg_dst = os.path.join(cg_dst, "file.json")
             message = self.create_message(
                 self.state.record, {"payload": {"dir": cg_dst}}
             )
