@@ -59,6 +59,97 @@ def create_dir(dir_name):
     return dir_name
 
 
+def retrieve_page(url):
+    """Retrieve a web page.
+
+    Args:
+        url
+    Returns:
+        status: boolean (true->success, false->failed)
+        content (str) or error (dict)
+        log message
+    """
+    try:
+        session = requests.Session()
+        retry = Retry(connect=5, backoff_factor=0.5)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+
+        error_msg = {}
+
+        with closing(session.get(url, stream=True)) as resp:
+            if resp.status_code != 200:
+                m = '{0}: Error during requests to {1} : status {2}'.format(
+                    str(datetime.datetime.now()),
+                    url, resp.status_code
+                )
+                error_msg['phase'] = 'retrieving the url'
+                error_msg['message'] = 'Url {}: status {}'.format(
+                    url, resp.status_code
+                )
+                return False, error_msg, m
+            return True, resp.content, None
+    except RequestException as e:
+        m = '{}: Error during requests to {} : {}'.format(
+            str(datetime.datetime.now()),
+            url,
+            str(e)
+        )
+        error_msg['phase'] = 'retrieving the url'
+        error_msg['message'] = 'Url {}: error {}'.format(
+            url, str(e)
+        )
+        return False, error_msg, m
+
+
+def parse_page(page):
+    """Parses a Debian Snapshot HTML page and parses the sources URLs.
+    """
+    urls = []
+    html = BeautifulSoup(page, 'html.parser')
+    source_files = html.select('dl')[0]
+    for source in source_files.select('dd'):
+        for block in source.select('dl'):
+            urls.append(block.select('a')[0]['href'])
+    return urls
+
+
+def download_file(url, dir_name):
+    """Download file (usually .dsc, .tar.xz, and .debian.tar.xz).
+    """
+    status, result, message = retrieve_page(download_url.format(url))
+
+    if not status:
+        return status, result, message
+
+    unquoted_url = urllib.parse.unquote(url[url.rfind('/')+1:])
+    filename = '{}/{}'.format(dir_name, unquoted_url)
+    with open(filename, 'wb') as f:
+        f.write(result)
+    return True, None, None
+
+
+def download(url, dir_name):
+    """Download the debian source package file (.dsc) and the tar of project
+    """
+    # Find urls
+    status, result, m = retrieve_page(url)
+    if not status:
+        return status, result, m
+    urls = parse_page(result)
+
+    # Create directory to save the files
+    create_dir(dir_name)
+
+    # Download the files
+    for source_file_url in urls:
+        status, result, m = download_file(source_file_url, dir_name)
+        if not status:
+            return status, result, m
+    return status, result, m
+
+
 class PackageState():
     """A structure that contains the state for a package.
     """
@@ -135,84 +226,15 @@ class CScoutKafkaPlugin(KafkaPlugin):
     def free_resource(self):
         pass
 
-    def _retrieve_page(self, url):
-        """Returns a Debian Snapshot HTML page.
-        """
-        try:
-            session = requests.Session()
-            retry = Retry(connect=5, backoff_factor=0.5)
-            adapter = HTTPAdapter(max_retries=retry)
-            session.mount('http://', adapter)
-            session.mount('https://', adapter)
-
-            with closing(session.get(url, stream=True)) as resp:
-                if resp.status_code != 200:
-                    m = '{0}: Error during requests to {1} : status {2}'.format(
-                        str(datetime.datetime.now()),
-                        url, resp.status_code
-                    )
-                    self.log(m)
-                    self.state.error_msg['phase'] = 'retrieving the url'
-                    self.state.error_msg['message'] = 'Url {}: status {}'.format(
-                        url, resp.status_code
-                    )
-                    raise PluginError("Error during request")
-                return resp.content
-        except RequestException as e:
-            m = '{}: Error during requests to {} : {}'.format(
-                str(datetime.datetime.now()),
-                url,
-                str(e)
-            )
-            self.log(m)
-            self.state.error_msg['phase'] = 'retrieving the url'
-            self.state.error_msg['message'] = 'Url {}: error {}'.format(
-                url, str(e)
-            )
-            raise PluginError("Error during request")
-
-    def _parse_page(self, page):
-        """Parses a Debian Snapshot HTML page and parses the sources URLs.
-        """
-        html = BeautifulSoup(page, 'html.parser')
-        source_files = html.select('dl')[0]
-        for source in source_files.select('dd'):
-            for block in source.select('dl'):
-                self.state.urls.append(block.select('a')[0]['href'])
-
-    def _download_file(self, url):
-        """Download file (usually .dsc, .tar.xz, and .debian.tar.xz).
-        """
-        try:
-            contents = self._retrieve_page(
-                download_url.format(url)
-            )
-        except PluginError:
-            raise
-        unquoted_url = urllib.parse.unquote(url[url.rfind('/')+1:])
-        filename = '{}/{}'.format(self.state.dir_name, unquoted_url)
-        with open(filename, 'wb') as f:
-            f.write(contents)
-
     def download(self):
         """Download the source code of project
         """
-        # Find urls
-        try:
-            page = self._retrieve_page(self.state.url)
-        except PluginError:
-            raise
-        self._parse_page(page)
-
-        # Create directory to save the files
-        create_dir(self.state.dir_name)
-
-        # Download the files
-        for source_file_url in self.state.urls:
-            try:
-                self._download_file(source_file_url)
-            except PluginError:
-                raise
+        status, error, m = download(self.state.url, self.state.dir_name)
+        if not status:
+            self.log(m)
+            self.state.error_msg['phase'] = error['phase']
+            self.state.error_msg['message'] = error['message']
+            raise PluginError("Error during downloading the dsc")
 
     def _run_sbuild(self):
         """Run sbuild to produce call graph.
@@ -457,7 +479,10 @@ class CScoutKafkaPlugin(KafkaPlugin):
             self.log("{}: Phase: {} Sent: {} to {}".format(
                 str(datetime.datetime.now()), phase, log_msg, topic
             ))
-            json.dump(msg, open("/home/builder/debug/" + topic + ".json", 'a'))
+            filename = "/home/builder/debug/" + topic + ".json"
+            json.dump(msg, open(filename, 'a'))
+            with open(filename, 'a') as f:
+                f.write("\n")
         else:
             super().emit_message(topic, msg, phase, log_msg)
 
