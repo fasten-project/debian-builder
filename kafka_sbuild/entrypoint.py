@@ -44,8 +44,18 @@ from bs4 import BeautifulSoup
 
 archive_mirror = 'https://snapshot.debian.org'
 snap_url = archive_mirror + '/package/{}/{}/'
+deb_url = 'http://deb.debian.org/debian/pool/main/{}/{}/{}'
 download_url = archive_mirror + '{}'
 
+
+deb_lookup = [
+    '0', '2', '3', '4', '6', '7', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+    'i', 'j', 'k', 'l', 'lib3', 'liba', 'libb', 'libc', 'libd', 'libe', 'libf',
+    'libg', 'libh', 'libi', 'libj', 'libk', 'libl', 'libm', 'libn', 'libo',
+    'libp', 'libq', 'libr', 'libs', 'libt', 'libu', 'libv', 'libw', 'libx',
+    'liby', 'libz', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
+    'y', 'z'
+]
 
 class IntermediatePluginError(Exception):
     """Error that occurs on non fatal cases
@@ -103,22 +113,10 @@ def retrieve_page(url):
         return False, error_msg, m
 
 
-def parse_page(page):
-    """Parses a Debian Snapshot HTML page and parses the sources URLs.
-    """
-    urls = []
-    html = BeautifulSoup(page, 'html.parser')
-    source_files = html.select('dl')[0]
-    for source in source_files.select('dd'):
-        for block in source.select('dl'):
-            urls.append(block.select('a')[0]['href'])
-    return urls
-
-
 def download_file(url, dir_name):
     """Download file (usually .dsc, .tar.xz, and .debian.tar.xz).
     """
-    status, result, message = retrieve_page(download_url.format(url))
+    status, result, message = retrieve_page(url)
 
     if not status:
         return status, result, message
@@ -130,14 +128,79 @@ def download_file(url, dir_name):
     return True, None, None
 
 
-def download(url, dir_name):
-    """Download the debian source package file (.dsc) and the tar of project
+def parse_page_snap(page):
+    """Parses a Debian Snapshot HTML page and parses the sources URLs.
     """
+    urls = []
+    html = BeautifulSoup(page, 'html.parser')
+    source_files = html.select('dl')[0]
+    for source in source_files.select('dd'):
+        for block in source.select('dl'):
+            urls.append(block.select('a')[0]['href'])
+    return urls
+
+
+def download_snap(source, version, dir_name):
+    url = snap_url.format(
+        source, urllib.parse.quote(version)
+    )
     # Find urls
     status, result, m = retrieve_page(url)
     if not status:
         return status, result, m
-    urls = parse_page(result)
+    urls = parse_page_snap(result)
+
+    # Create directory to save the files
+    create_dir(dir_name)
+
+    # Download the files
+    for source_file_url in urls:
+        status, result, m = download_file(
+            download_url.format(source_file_url), dir_name
+        )
+        if not status:
+            return status, result, m
+    return status, result, m
+
+
+def find_deb_prefix(name):
+    prefix = ''
+    for i in name:
+        prefix += i
+        if prefix in deb_lookup:
+            return prefix
+    return False
+
+
+def parse_page_deb(page, source, version, prefix):
+    """Parses a Debian deb HTML page and return URLs.
+    """
+    html = BeautifulSoup(page, 'html.parser')
+    elements = [x.select('a')[0].get_text() for x in html.select('tr')[3:-1]]
+    elements = list(filter(lambda x: not x.endswith("deb"), elements))
+    sv = source + "_" + version + "."
+    result = list(filter(lambda x: x.startswith(sv), elements))
+    return [deb_url.format(prefix, source, x) for x in result]
+
+
+def download_deb(source, version, dir_name):
+    prefix = find_deb_prefix(source)
+    if prefix is False:
+        error_msg = {}
+        m = 'find deb prefix'
+        error_msg['phase'] = m
+        error_msg['message'] = 'Source {}: error {}'.format(
+            source, 'prefix not found'
+        )
+        return False, error_msg, m
+    url = deb_url.format(
+        prefix, source, ""
+    )
+    # Find urls
+    status, result, m = retrieve_page(url)
+    if not status:
+        return status, result, m
+    urls = parse_page_deb(result, source, version, prefix)
 
     # Create directory to save the files
     create_dir(dir_name)
@@ -147,6 +210,17 @@ def download(url, dir_name):
         status, result, m = download_file(source_file_url, dir_name)
         if not status:
             return status, result, m
+    return status, result, m
+
+
+def download(source, version, dir_name):
+    """Download the debian source package file (.dsc) and the tar of project
+    """
+    status, result, m = download_snap(source, version, dir_name)
+    status = False
+    if status:
+        return status, result, m
+    status, result, m = download_deb(source, version, dir_name)
     return status, result, m
 
 
@@ -176,9 +250,6 @@ class PackageState():
         )
         self.cg_dst = "callgraphs/{}/{}/{}/{}/{}".format(
             self.package[0], self.package, self.dist, self.version, self.arch
-        )
-        self.url = snap_url.format(
-            self.source, urllib.parse.quote(self.sversion)
         )
         self.urls = []
         self.profiling_data = {'times': {}}
@@ -229,7 +300,9 @@ class CScoutKafkaPlugin(KafkaPlugin):
     def download(self):
         """Download the source code of project
         """
-        status, error, m = download(self.state.url, self.state.dir_name)
+        status, error, m = download(
+            self.state.source, self.state.sversion, self.state.dir_name
+        )
         if not status:
             self.log(m)
             self.state.error_msg['phase'] = error['phase']
@@ -591,5 +664,17 @@ def main():
             time.sleep(sleep_time)
 
 
+def test_download():
+    source = 'anna'
+    version = '1.71'
+    dir_name = 'anna_1.71'
+    print(download(source, version, dir_name))
+    source = 'h2o'
+    version = '2.2.5+dfsg2-5'
+    dir_name = 'h2o_2.2.5+dfsg2-5'
+    print(download(source, version, dir_name))
+
+
 if __name__ == "__main__":
     main()
+    #  test_download()
