@@ -50,11 +50,15 @@ download_url = archive_mirror + '{}'
 
 deb_lookup = [
     '0', '2', '3', '4', '6', '7', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
-    'i', 'j', 'k', 'l', 'lib3', 'liba', 'libb', 'libc', 'libd', 'libe', 'libf',
+    'i', 'j', 'k', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
+    'y', 'z'
+]
+# Only packages from l can be in different directories
+deb_lookup_l = [
+    'lib3', 'liba', 'libb', 'libc', 'libd', 'libe', 'libf',
     'libg', 'libh', 'libi', 'libj', 'libk', 'libl', 'libm', 'libn', 'libo',
     'libp', 'libq', 'libr', 'libs', 'libt', 'libu', 'libv', 'libw', 'libx',
-    'liby', 'libz', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
-    'y', 'z'
+    'liby', 'libz'
 ]
 
 class IntermediatePluginError(Exception):
@@ -164,11 +168,13 @@ def download_snap(source, version, dir_name):
 
 
 def find_deb_prefix(name):
-    prefix = ''
-    for i in name:
-        prefix += i
-        if prefix in deb_lookup:
-            return prefix
+    if name[0] != 'l' and name[0] in deb_lookup:
+        return name[0]
+    if name[0] == 'l':
+        if len(name) >= 4:
+            if name[:4] in deb_lookup_l:
+                return name[:4]
+        return 'l'
     return False
 
 
