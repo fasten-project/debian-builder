@@ -38,7 +38,7 @@ VERSION=$(cat $DSC | grep '^Version: ' | head -1)
 VERSION=${VERSION#"Version: "}
 VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')"
 if [[ "$VERSION" =~ -[0-9]+$ ]]; then
-    SVERSION=${VERSION##*-}
+    SVERSION=${VERSION%-*}
 else
     SVERSION=$VERSION
 fi
@@ -212,12 +212,39 @@ produce_callgraphs() {
             for bin in $(cat binaries_per_pkg/$pkg); do
                 binary="$binaries/${bin%%\.*}"
                 mkdir -p $binary
-                cp $TOOL_DIR/$bin.txt $binary/$bin.txt && \
-                awk '!a[$0]++' $binary/$bin.txt > foo && \
-                mv foo $binary/$bin.txt && \
-                cp $TOOL_DIR/$bin.cs $binary/$bin.cs && \
-                binary_file=$(detect_binary "$bin") && \
-                cp $binary_file $binary/
+                # Use a heuristic to handle some cases like libc.
+                # If a binary does not exist, then check if it contains SVERSION
+                # If so, remove SVERSION from the string and try again.
+                # For example, libc contains libc-1.28.so when we have only
+                # analyze libc.so
+                local status_code=
+                local bin_name=$bin
+                local err_msg=
+                if err_msg=$(cp $TOOL_DIR/$bin_name.txt $binary/$bin.txt 2>&1 > /dev/null) ; then
+                    status_code=0
+                elif [[ "$bin" =~ .*"-$SVERSION".* ]]; then
+                   status_code=0
+                   bin_name=${bin//-$SVERSION/}
+                   err_msg="bin=$bin"
+                   rm -rf $binary
+                   binary="$binaries/${bin%.*}"
+                   mkdir -p $binary
+                   if ! err_msg2=$(cp $TOOL_DIR/$bin_name.txt $binary/$bin.txt 2>&1 > /dev/null) ; then
+                       echo "$err_msg $err_msg2"
+                       status_code=1
+                   fi
+                else
+                   rm -rf $binary
+                   echo "$err_msg"
+                   status_code=1
+                fi
+                if [ $status_code -eq 0 ]; then
+                    awk '!a[$0]++' $binary/$bin.txt > foo && \
+                    mv foo $binary/$bin.txt && \
+                    cp $TOOL_DIR/$bin_name.cs $binary/$bin.cs && \
+                    binary_file=$(detect_binary "$bin_name") && \
+                    cp $binary_file $binary/$bin
+                fi
             done
             cp $PWD_PKG/*.dsc $PACKAGES/$pkg/$pkg.dsc
             cp $PWD_SRC/debian/changelog $PACKAGES/$pkg/$pkg.changelog

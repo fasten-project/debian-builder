@@ -66,9 +66,13 @@ run_cscout() {
         x1=$(basename -- "$cs")
         x=${x1::${#x1}-3}
         if [[ ! $USED_BINARIES == *"$x"* ]]; then
-            echo "Skip $cs"
-            echo "#analysis: $cs: not in USED_BINARIES" >> $DEST_PKG/report
-            continue
+            # We don't want to skip libraries because we may use them later
+            # in case there is a library name that contain SVERSION
+            if [[ ! "$x" =~ .*(".so"|".a") ]]; then
+                echo "Skip $cs"
+                echo "#analysis: $cs: not in USED_BINARIES" >> $DEST_PKG/report
+                continue
+            fi
         fi
         if [[ -f "$cs" && ! -s "$cs" ]]; then
             echo "#analysis: ${cs}: empty" >> $DEST_PKG/report
