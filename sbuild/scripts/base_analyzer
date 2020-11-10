@@ -37,6 +37,11 @@ NAME="$(echo -e "${NAME}" | tr -d '[:space:]')"
 VERSION=$(cat $DSC | grep '^Version: ' | head -1)
 VERSION=${VERSION#"Version: "}
 VERSION="$(echo -e "${VERSION}" | tr -d '[:space:]')"
+if [[ "$VERSION" =~ -[0-9]+$ ]]; then
+    SVERSION=${VERSION##*-}
+else
+    SVERSION=$VERSION
+fi
 ARCH="$(dpkg --print-architecture)"
 RELEASE="$(dpkg --status tzdata|grep Provides|cut -f2 -d'-')"
 PKG="$NAME"
