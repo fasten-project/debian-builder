@@ -258,7 +258,7 @@ class PackageState():
         self.profiling_data = {'times': {}}
         self.binary_pkgs = []
         self.old_cwd = os.getcwd()
-        self.err = {'error': {}}
+        self.err = {'error': {'phase': '', 'message': '', 'crashed': False}}
         self.error_msg = self.err['error']
         self.status = ""
 
@@ -315,6 +315,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
             self.log(m)
             self.state.error_msg['phase'] = error['phase']
             self.state.error_msg['message'] = error['message']
+            self.state.error_msg['crashed'] = True
             raise PluginError("Error during downloading the dsc")
 
     def _run_sbuild(self):
@@ -341,6 +342,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
             self.log(m)
             self.state.error_msg['phase'] = 'run_sbuild'
             self.state.error_msg['message'] = message
+            self.state.error_msg['crashed'] = True
             raise PluginError(message)
         dsc = dsc[0]
 
@@ -368,6 +370,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
             )
             self.state.error_msg['phase'] = 'run_sbuild'
             self.state.error_msg['message'] = message
+            self.state.error_msg['crashed'] = True
             raise PluginError(message)
         os.chdir(self.state.old_cwd)
 
@@ -402,11 +405,13 @@ class CScoutKafkaPlugin(KafkaPlugin):
                         if log[1] == 'failed':
                             self.state.error_msg['phase'] = 'build'
                             self.state.error_msg['message'] = 'Build failed'
+                            self.state.error_msg['crashed'] = True
                             raise PluginError('Build failed')
                     elif log[0] == 'detect_binaries':
                         if log[1] == 'failed':
                             self.state.error_msg['phase'] = 'detect_binaries'
                             self.state.error_msg['message'] = 'No binaries found'
+                            self.state.error_msg['crashed'] = True
                             raise PluginError('No binaries found')
                     elif log[0] == 'analysis':
                         if log[2] == 'failed':
@@ -418,6 +423,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
                         if log[1] == 'failed':
                             self.state.error_msg['phase'] = 'detect_binaries'
                             self.state.error_msg['message'] = 'Produce debian packages failed'
+                            self.state.error_msg['crashed'] = True
                             raise PluginError('Produce debian packages failed')
                     elif log[0] == 'detect_packages':
                         self.state.binary_pkgs = log[1].split(' ')
@@ -447,6 +453,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
             self.log(m)
             self.state.error_msg['phase'] = 'report'
             self.state.error_msg['message'] = message
+            self.state.error_msg['crashed'] = True
             raise PluginError(message)
         if self.state.status == 'done':
             m = "{}: Call graph generated".format(
@@ -511,6 +518,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
             self.log(m)
             self.state.error_msg['phase'] = 'read_fcg'
             self.state.error_msg['message'] = message
+            self.state.error_msg['crashed'] = True
             raise PluginError(message)
         except:
             m = "{}: {} - {}.".format(
