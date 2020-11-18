@@ -1,1 +1,8 @@
 */callgraphs
+tests/debian
+tests/debug
+tests/output
+*/calls
+*/sources
+*/temp
+temp
