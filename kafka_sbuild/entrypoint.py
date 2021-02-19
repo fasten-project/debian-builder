@@ -242,6 +242,7 @@ class PackageState():
         self.sversion = record['source_version']
         self.dist = record['release']
         self.arch = record['arch']
+        self.forge = record.get('forge', 'debian')
         self.dir_name = '{}-{}-{}-{}'.format(
             self.source, self.dist, self.arch, self.sversion
         )
@@ -264,6 +265,11 @@ class PackageState():
 
     def get_cg_dst(self, pkg):
         return "callgraphs/{}/{}/{}/{}/{}".format(
+            pkg[0], pkg, self.dist, self.version, self.arch
+        )
+
+    def get_sources_dst(self, pkg):
+        return "sources/{}/{}/{}/{}/{}".format(
             pkg[0], pkg, self.dist, self.version, self.arch
         )
 
@@ -533,8 +539,17 @@ class CScoutKafkaPlugin(KafkaPlugin):
         if self.directory != '':
             cg_dst = os.path.join(self.directory, self.state.get_cg_dst(pkg))
             cg_dst = os.path.join(cg_dst, "file.json")
+            sources_dst = os.path.join(self.directory, self.state.get_sources_dst(pkg))
             message = self.create_message(
-                self.state.record, {"payload": {"dir": cg_dst}}
+                self.state.record, 
+                {"payload": {
+                    "dir": cg_dst,
+                    "forge": self.state.forge,
+                    "product": self.state.package,
+                    "version": self.state.version,
+                    "arch": self.state.arch,
+                    "sourcePath": sources_dst
+                }}
             )
         else:
             message = self.create_message(self.state.record, {"payload": call_graph})
