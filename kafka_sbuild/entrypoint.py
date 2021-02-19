@@ -269,8 +269,8 @@ class PackageState():
         )
 
     def get_sources_dst(self, pkg):
-        return "sources/{}/{}/{}/{}/{}".format(
-            pkg[0], pkg, self.dist, self.version, self.arch
+        return "sources/{}/{}/{}".format(
+            pkg[0], pkg, self.version
         )
 
 
@@ -548,6 +548,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
                     "product": self.state.package,
                     "version": self.state.version,
                     "arch": self.state.arch,
+                    "dist": self.state.dist,
                     "sourcePath": sources_dst
                 }}
             )
