@@ -66,5 +66,5 @@ sudo docker run -it --privileged \
     -v $(pwd)/temp/debug:/home/builder/debug \
     -v $(pwd)/temp/debian:/mnt/fasten/debian \
     kafka-cscout --directory /mnt/fasten/debian \
-    --debug "{'package': 'anna', 'version': '1.71', 'arch': 'amd64', 'release': 'buster', 'source': 'anna', 'source_version': '1.71', 'date': ''}"
+    --debug "{'source': 'anna', 'version': '1.71', 'arch': 'amd64', 'release': 'buster',  'date': ''}"
 ```

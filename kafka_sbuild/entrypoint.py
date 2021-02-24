@@ -354,25 +354,22 @@ class PackageState():
     """
     def __init__(self, record):
         self.record = record
-        self.package = record['package']
-        self.version = record['version']
-        self.dist = record['release']
         self.source = record['source']
-        self.sversion = record['source_version']
+        self.version = record['version']
         self.dist = record['release']
         self.arch = record['arch']
         self.forge = record.get('forge', 'debian')
         self.dir_name = '{}-{}-{}-{}'.format(
-            self.source, self.dist, self.arch, self.sversion
+            self.source, self.dist, self.arch, self.version
         )
         self.callgraph_dir = '/{}/{}/{}/{}/{}/'.format(
-            'callgraphs', self.source, self.dist, self.sversion, self.arch
+            'callgraphs', self.source, self.dist, self.version, self.arch
         )
         self.source_dir = '/{}/{}/{}/{}/{}'.format(
-            'sources', self.dist, self.source[0], self.source, self.sversion
+            'sources', self.dist, self.source[0], self.source, self.version
         )
         self.dst = "sources/{}/{}/{}".format(
-            self.source[0], self.source, self.sversion
+            self.source[0], self.source, self.version
         )
         self.urls = []
         self.profiling_data = {'times': {}}
@@ -434,7 +431,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
         """Download the source code of project
         """
         status, error, m = download(
-            self.state.source, self.state.sversion, self.state.dir_name
+            self.state.source, self.state.version, self.state.dir_name
         )
         if not status:
             self.log(m)
@@ -664,9 +661,9 @@ class CScoutKafkaPlugin(KafkaPlugin):
                 {"payload": {
                     "dir": cg_dst,
                     "forge": self.state.forge,
-                    "product": self.state.package,
-                    "version": self.state.version,
-                    "arch": self.state.arch,
+                    "product": call_graph['product'],
+                    "version": call_graph['version'],
+                    "arch": call_graph['architecture'],
                     "dist": self.state.dist,
                     "sourcePath": sources_dst
                 }}
