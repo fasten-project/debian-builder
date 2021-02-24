@@ -23,8 +23,9 @@
 #
 FROM schaliasos/sbuild-cscout:latest
 
-RUN pip3 install requests BeautifulSoup4 kafka-python fasten
-RUN sudo pip3 install requests BeautifulSoup4 kafka-python fasten
+RUN sudo apt -yqq update && sudo apt -yqq install libcurl4-openssl-dev libssl-dev
+RUN pip3 install requests BeautifulSoup4 kafka-python fasten pycurl
+RUN sudo pip3 install requests BeautifulSoup4 kafka-python fasten pycurl
 
 # DIRECTORY TO SAVE DEBUG FILES
 run mkdir -p /home/builder/debug

@@ -31,7 +31,9 @@ import shutil
 import urllib
 import requests
 import ast
+import pycurl
 import subprocess as sp
+from io import BytesIO
 from distutils.dir_util import copy_tree
 from fasten.plugins.kafka import KafkaPlugin
 from fasten.plugins.base import PluginError
@@ -46,6 +48,7 @@ archive_mirror = 'https://snapshot.debian.org'
 snap_url = archive_mirror + '/package/{}/{}/'
 deb_url = 'http://deb.debian.org/debian/pool/main/{}/{}/{}'
 download_url = archive_mirror + '{}'
+last_request = None
 
 
 deb_lookup = [
@@ -73,7 +76,107 @@ def create_dir(dir_name):
     return dir_name
 
 
-def retrieve_page(url):
+class MyHTTPException(Exception):
+    pass
+
+
+class MyHTTP404Exception(Exception):
+    pass
+
+
+class MyHTTPTimeoutException(Exception):
+    pass
+
+
+def download_from_snapshot(url):
+    """Download a file from snapshot.d.o.
+    https://salsa.debian.org/josch/metasnap/-/blob/master/run.py
+    """
+    f = BytesIO()
+    maxretries = 10
+    for retrynum in range(maxretries):
+        try:
+            c = pycurl.Curl()
+            c.setopt(
+                c.URL,
+                url,
+            )
+            # even 100 kB/s is too much sometimes
+            c.setopt(c.MAX_RECV_SPEED_LARGE, 1000 * 1024)  # bytes per second
+            c.setopt(c.CONNECTTIMEOUT, 30)  # the default is 300
+            # sometimes, curl stalls forever and even ctrl+c doesn't work
+            start = time.time()
+
+            def progress(*data):
+                # a download must not last more than 10 minutes
+                # with 100 kB/s this means files cannot be larger than 62MB
+                if time.time() - start > 10 * 60:
+                    print("transfer took too long")
+                    # the code will not see this exception but instead get a
+                    # pycurl.error
+                    raise MyHTTPTimeoutException(url)
+
+            c.setopt(pycurl.NOPROGRESS, 0)
+            c.setopt(pycurl.XFERINFOFUNCTION, progress)
+            # $ host snapshot.debian.org
+            # snapshot.debian.org has address 185.17.185.185
+            # snapshot.debian.org has address 193.62.202.27
+            # c.setopt(c.RESOLVE, ["snapshot.debian.org:80:185.17.185.185"])
+            if f.tell() != 0:
+                c.setopt(pycurl.RESUME_FROM, f.tell())
+            c.setopt(c.WRITEDATA, f)
+            c.perform()
+            if c.getinfo(c.RESPONSE_CODE) == 404:
+                raise MyHTTP404Exception("got HTTP 404 for %s" % url)
+            elif c.getinfo(c.RESPONSE_CODE) not in [200, 206]:
+                raise MyHTTPException(
+                    "got HTTP %d for %s" % (c.getinfo(c.RESPONSE_CODE), url)
+                )
+            c.close()
+            # if the requests finished too quickly, sleep the remaining time
+            # s/r  r/h
+            # 3    1020
+            # 2.5  1384
+            # 2.4  1408
+            # 2    1466
+            # 1.5  2267
+            seconds_per_request = 1.5
+            global last_request
+            if last_request is not None:
+                sleep_time = seconds_per_request - (time.time() - last_request)
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+            last_request = time.time()
+            return f.getvalue()
+        except pycurl.error as e:
+            code, message = e.args
+            if code in [
+                pycurl.E_PARTIAL_FILE,
+                pycurl.E_COULDNT_CONNECT,
+                pycurl.E_ABORTED_BY_CALLBACK,
+            ]:
+                if retrynum == maxretries - 1:
+                    break
+                sleep_time = 4 ** (retrynum + 1)
+                print("retrying after %f s..." % sleep_time)
+                time.sleep(sleep_time)
+                continue
+            else:
+                raise
+        except MyHTTPException as e:
+            print("got HTTP error:", repr(e))
+            if retrynum == maxretries - 1:
+                break
+            sleep_time = 4 ** (retrynum + 1)
+            print("retrying after %f s..." % sleep_time)
+            time.sleep(sleep_time)
+            # restart from the beginning or otherwise, the result might
+            # include a varnish cache error message
+            f = BytesIO()
+    raise Exception("failed too often...")
+
+
+def retrieve_page(url, snap=False):
     """Retrieve a web page.
 
     Args:
@@ -83,44 +186,60 @@ def retrieve_page(url):
         content (str) or error (dict)
         log message
     """
-    try:
-        session = requests.Session()
-        retry = Retry(connect=5, backoff_factor=0.5)
-        adapter = HTTPAdapter(max_retries=retry)
-        session.mount('http://', adapter)
-        session.mount('https://', adapter)
+    if snap:
+        try:
+            content = download_from_snapshot(url)
+            return True, content, None
+        except:
+            error_msg = {}
+            m = '{0}: Error during requests to {1} : status {2}'.format(
+                str(datetime.datetime.now()),
+                url, "Failed"
+            )
+            error_msg['phase'] = 'retrieving the url'
+            error_msg['message'] = 'Url {}: status {}'.format(
+                url, "Failed"
+            )
+            return False, error_msg, m
+    else:
+        try:
+            session = requests.Session()
+            retry = Retry(connect=5, backoff_factor=0.5)
+            adapter = HTTPAdapter(max_retries=retry)
+            session.mount('http://', adapter)
+            session.mount('https://', adapter)
 
-        error_msg = {}
+            error_msg = {}
 
-        with closing(session.get(url, stream=True)) as resp:
-            if resp.status_code != 200:
-                m = '{0}: Error during requests to {1} : status {2}'.format(
-                    str(datetime.datetime.now()),
-                    url, resp.status_code
-                )
-                error_msg['phase'] = 'retrieving the url'
-                error_msg['message'] = 'Url {}: status {}'.format(
-                    url, resp.status_code
-                )
-                return False, error_msg, m
-            return True, resp.content, None
-    except RequestException as e:
-        m = '{}: Error during requests to {} : {}'.format(
-            str(datetime.datetime.now()),
-            url,
-            str(e)
-        )
-        error_msg['phase'] = 'retrieving the url'
-        error_msg['message'] = 'Url {}: error {}'.format(
-            url, str(e)
-        )
-        return False, error_msg, m
+            with closing(session.get(url, stream=True)) as resp:
+                if resp.status_code != 200:
+                    m = '{0}: Error during requests to {1} : status {2}'.format(
+                        str(datetime.datetime.now()),
+                        url, resp.status_code
+                    )
+                    error_msg['phase'] = 'retrieving the url'
+                    error_msg['message'] = 'Url {}: status {}'.format(
+                        url, resp.status_code
+                    )
+                    return False, error_msg, m
+                return True, resp.content, None
+        except RequestException as e:
+            m = '{}: Error during requests to {} : {}'.format(
+                str(datetime.datetime.now()),
+                url,
+                str(e)
+            )
+            error_msg['phase'] = 'retrieving the url'
+            error_msg['message'] = 'Url {}: error {}'.format(
+                url, str(e)
+            )
+            return False, error_msg, m
 
 
-def download_file(url, dir_name):
+def download_file(url, dir_name, snap=False):
     """Download file (usually .dsc, .tar.xz, and .debian.tar.xz).
     """
-    status, result, message = retrieve_page(url)
+    status, result, message = retrieve_page(url, snap=snap)
 
     if not status:
         return status, result, message
@@ -149,7 +268,7 @@ def download_snap(source, version, dir_name):
         source, urllib.parse.quote(version)
     )
     # Find urls
-    status, result, m = retrieve_page(url)
+    status, result, m = retrieve_page(url, snap=True)
     if not status:
         return status, result, m
     urls = parse_page_snap(result)
@@ -160,7 +279,7 @@ def download_snap(source, version, dir_name):
     # Download the files
     for source_file_url in urls:
         status, result, m = download_file(
-            download_url.format(source_file_url), dir_name
+            download_url.format(source_file_url), dir_name, snap=True
         )
         if not status:
             return status, result, m
@@ -541,7 +660,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
             cg_dst = os.path.join(cg_dst, "file.json")
             sources_dst = os.path.join(self.directory, self.state.get_sources_dst(pkg))
             message = self.create_message(
-                self.state.record, 
+                self.state.record,
                 {"payload": {
                     "dir": cg_dst,
                     "forge": self.state.forge,
