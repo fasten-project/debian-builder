@@ -353,6 +353,9 @@ class PackageState():
     """A structure that contains the state for a package.
     """
     def __init__(self, record):
+        record = record.get("payload", record)
+        if record.get("dsc"):
+            record.pop("dsc")
         self.record = record
         self.source = record['source']
         self.version = record['version']
@@ -679,17 +682,17 @@ class CScoutKafkaPlugin(KafkaPlugin):
         # State of package
         self.state = PackageState(record)
         # Begin
-        message = self.create_message(record, {"status": "begin"})
+        message = self.create_message(self.state.record, {"status": "begin"})
         self.emit_message(self.log_topic, message, "begin", "")
         try:
             self.download()
             self._run_sbuild()
             self._check_analysis_result()
-            message = self.create_message(record, {"status": "success"})
+            message = self.create_message(self.state.record, {"status": "success"})
             self.emit_message(self.log_topic, message, "complete", "")
         except PluginError:
             self._produce_error_to_kafka()
-            message = self.create_message(record, {"status": "failed"})
+            message = self.create_message(self.state.record, {"status": "failed"})
             self.emit_message(self.log_topic, message, "failed", "")
         os.chdir(self.state.old_cwd)
         self._cleanup()
