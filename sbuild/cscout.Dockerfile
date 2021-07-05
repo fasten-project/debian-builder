@@ -28,7 +28,8 @@ USER root
 WORKDIR /root
 
 # INSTALL CScout
-RUN git clone https://github.com/dspinellis/cscout.git
+#
+RUN git clone https://github.com/StefanosChaliasos/cscout.git
 WORKDIR cscout
 RUN make && make install
 
