@@ -1,0 +1,256 @@
+#!/usr/bin/env python3
+# Copyright (c) 2018-2020 FASTEN.
+#
+# This file is part of FASTEN
+# (see https://www.fasten-project.eu/).
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+import argparse
+import re
+import os
+import json
+import subprocess as sp
+
+import networkx as nx
+
+
+def run_command(arguments, parse_stdout=True):
+    """Run a command
+
+    Args:
+        A list with the arguments to execute. For example ['ls', 'foo']
+
+    Returns:
+        stdout, return status.
+    """
+    try:
+        cmd = sp.Popen(arguments, stdout=sp.PIPE, stderr=sp.STDOUT)
+        stdout, _ = cmd.communicate()
+    except Exception as e:
+        m = "Warning: run_command failed with arguments {} and error {}".format(
+            ' '.join(map(str, arguments)), e
+        )
+        return '', -1
+    if parse_stdout:
+        stdout = stdout.decode("utf-8").split("\n")
+    status = cmd.returncode
+    return stdout, status
+
+
+def find_product(path):
+    """Find the corresponding product of a file.
+
+    Args:
+        The full path of a file. In case of shared libraries it should be only
+        their name and not their path.
+
+    Returns:
+        stdout, return status.
+    """
+    stdout, status = run_command(['dpkg', '-S', path])
+    stdout = re.split(':| ', stdout[0])[0]
+    return stdout, status
+
+
+def find_shared_libs_products(binary):
+    """Find linked shared libraries and their corresponding products.
+
+    Sometimes to get the correct product of a shared library we must know
+    the binary that is linked to.
+
+    Args:
+        The file path of a binary
+
+    Returns:
+        A list that contains tuples with shared libraries paths, and
+        their products
+    """
+    res = []
+    # Run ldd to detect the shared libraries
+    stdout, _ = run_command(['ldd', '-d', binary])
+    solib_names_paths = []  # (name, path or '')
+    for line in stdout:
+        if len(line.split()) == 0:
+            continue
+        elif "=>" in line:
+            name = line.split('=>')[0].split()[0]
+            path = line.split('=>')[1].split()[0]
+            if path == 'not':  # library not found
+                # add the library in the results with library name
+                continue
+            solib_names_paths.append((name, path))
+        elif line.split()[0].startswith('/'):
+            solib_names_paths.append((line.split()[0], (line.split()[0])))
+    # Run dpkg to detect products
+    for name, path in solib_names_paths:
+        stdout, status = run_command(['dpkg', '-S', name])
+        stdout = list(filter(None, stdout))
+        if len(stdout) > 1:
+            product = re.split(':| ', stdout[0])[0]
+            for line in stdout:
+                if line.split(' ')[1] == path:
+                    product = re.split(':| ', line)[0]
+        else:
+            product = stdout = re.split(':| ', stdout[0])[0]
+        if status != 0:
+            product = 'UNDEFINED'
+        res.append((path, product))
+    return res
+
+
+def find_static_libraries_products(libs, product_regex):
+    """Find static libraries and their corresponding products.
+
+    Empty product means that is the currently analyzed.
+
+    Args:
+        list: The file path of a cscout file
+        aproduct: Analyzed product
+        product_regex: Regex to match libraries of analyzed product
+
+    Returns:
+        A list that contains tuples with static libraries path, and
+        their products
+    """
+    res = []
+    # Run dpkg to detect products
+    for path in libs:
+        stdout, status = run_command(['dpkg', '-S', path])
+        if status != 0:
+            if re.match(r'' + product_regex, path):
+                product = ''
+            else:
+                product = 'UNDEFINED'
+        else:
+            product = re.split(':| ', stdout[0])[0]
+        res.append((path, product))
+    return res
+
+
+def canonicalize_binary_name(binary):
+    """Return the basename of a binary and only the first part of the
+        extension.
+
+    For example, /lib/x86_64-linux-gnu/libc.so.6 would become libc.so
+    """
+    basename = os.path.basename(binary)
+    second_dot = basename.find('.', basename.find('.') + 1)
+    return basename[:second_dot] if second_dot > -1 else basename
+
+
+def produce_funcs_lookup(static_libs, shared_libs):
+    """Create a lookup for functions declared in given libraries.
+    """
+    funcs = {}
+
+    for lib in static_libs:
+        library, product = lib
+        can_library = canonicalize_binary_name(library)
+        stdout, _ = run_command(['nm', '-g', library])
+        for line in stdout:
+            line = line.strip().split()
+            if len(line) == 3 and line[1] == 'T':
+                funcs[line[2]] = (can_library, product)
+    for lib in shared_libs:
+        library, product = lib
+        can_library = canonicalize_binary_name(library)
+        stdout, _ = run_command(['objdump', '-T', library])
+        for line in stdout:
+            if 'DF .text' in line or 'iD  .text' in line:
+                name = line.split()[-1]
+                funcs[name] = (can_library, product)
+    return funcs
+
+
+def update_funcs_from_bin(funcs, binary):
+    """Add functions from binary to funcs, if the functions does not exist
+    in funcs.
+
+    Args:
+        funcs: functions lookup
+        binary: binary path
+    """
+    # Warning if the list of shared libraries and static libraries is not
+    # complete, we may add FP here.
+    stdout, _ = run_command(['nm', '--defined-only', binary])
+    can_binary = canonicalize_binary_name(binary)
+    for line in stdout:
+        line = line.strip().split()
+        if len(line) == 3 and line[1] == 'T' and '@' not in line[2]:
+            funcs[line[2]] = (can_binary, '')
+
+
+def create_uri(product, binary, func_name):
+    if product == '':
+        return "/{};C/{}()".format(binary, func_name)
+    return "//{}/{};C/{}()".format(product, binary, func_name)
+
+
+def produce_result(call_graph):
+    return {}
+
+
+def parse_args():
+    parser = argparse.ArgumentParser("Convert dot graph to FASTEN JSON format")
+    parser.add_argument(
+        "-s", "--static-libraries", nargs='*',
+        help="Space separated paths of linked static libraries",
+        default=[]
+    )
+    parser.add_argument(
+        "-r", "--self-regex", nargs='*',
+        help="Regex to identify libraries of analyzed product (default: pwd)",
+       default='^{}.*$'.format(os.getcwd())
+    )
+    parser.add_argument("binary", help="Analyzed binary")
+    parser.add_argument("input_dot")
+    parser.add_argument("output_json")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    static_libs = find_static_libraries_products(
+        args.static_libraries, args.self_regex
+    )
+    shared_libs = find_shared_libs_products(args.binary)
+    funcs_lookup = produce_funcs_lookup(static_libs, shared_libs)
+    update_funcs_from_bin(funcs_lookup, args.binary)
+
+    g = nx.drawing.nx_pydot.read_dot(args.input_dot)
+    edges = g.edges.data(False)
+    not_found_counter = 0
+    call_graph = []
+    for edge in edges:
+        binary1, product1 = funcs_lookup.get(edge[0], (None, None))
+        binary2, product2 = funcs_lookup.get(edge[1], (None, None))
+        if not binary1 or not binary2:
+            not_found_counter += 1
+            continue
+        node1 = create_uri(product1, binary1, edge[0])
+        node2 = create_uri(product2, binary2, edge[1])
+        call_graph.append((node1, node2))
+    print("Skipped nodes: {}".format(not_found_counter))
+
+    with open(args.output_json, 'w') as out:
+        json.dump(call_graph, out)
+
+
+if __name__ == "__main__":
+    main()
