@@ -196,7 +196,9 @@ def update_funcs_from_bin(funcs, binary):
             funcs[line[2]] = (can_binary, '')
 
 
-def create_uri(product, binary, func_name):
+def create_uri(product, binary, func_name, only_fun_name=False):
+    if only_fun_name:
+        return func_name
     if product == '':
         return "/{};C/{}()".format(binary, func_name)
     return "//{}/{};C/{}()".format(product, binary, func_name)
@@ -217,6 +219,11 @@ def parse_args():
         "-r", "--self-regex", nargs='*',
         help="Regex to identify libraries of analyzed product (default: pwd)",
        default='^{}.*$'.format(os.getcwd())
+    )
+    parser.add_argument(
+        "-o", "--only-fun_name",
+        help="Keep only the function name",
+        action="store_true"
     )
     parser.add_argument("binary", help="Analyzed binary")
     parser.add_argument("input_dot")
@@ -243,8 +250,8 @@ def main():
         if not binary1 or not binary2:
             not_found_counter += 1
             continue
-        node1 = create_uri(product1, binary1, edge[0])
-        node2 = create_uri(product2, binary2, edge[1])
+        node1 = create_uri(product1, binary1, edge[0], args.only_fun_name)
+        node2 = create_uri(product2, binary2, edge[1], args.only_fun_name)
         call_graph.append((node1, node2))
     print("Skipped nodes: {}".format(not_found_counter))
 
