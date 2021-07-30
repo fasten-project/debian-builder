@@ -223,6 +223,11 @@ def parse_args():
         help="Keep only the function name",
         action="store_true"
     )
+    parser.add_argument(
+        "-c", "--only-current",
+        help="Keep only the edges that start from current package's nodes",
+        action="store_true"
+    )
     parser.add_argument("binary", help="Analyzed binary")
     parser.add_argument("input_dot")
     parser.add_argument("output_json")
@@ -248,6 +253,8 @@ def main():
         binary2, product2 = funcs_lookup.get(edge[1], (None, None))
         product1 = args.package if not product1 else product1
         product2 = args.package if not product2 else product2
+        if args.only_current and not product1 == args.package:
+            continue
         if not binary1 or not binary2:
             not_found_counter += 1
             continue
