@@ -17,7 +17,7 @@ cd zlib-1.2.11.dfsg
 ./configure && make
 echo hello world | valgrind --tool=callgrind --callgrind-out-file=minigzip.txt ./minigzip
 gprof2dot -f callgrind -n 0.0 -e 0.0 -o graph.dot minigzip.txt
-dot2fasten minigzip graph.dot res.json 
+dot2fasten minigzip graph.dot res.json zlib1g-dev
 cp res.json /callgraph/minigzip.json
 ```
 
