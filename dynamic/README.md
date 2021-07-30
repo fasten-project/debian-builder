@@ -11,13 +11,13 @@ docker build -t dynamic .
 **Example**
 
 ```bash
-docker run -it --rm dynamic /bin/bash
+docker run -it --rm -v $(pwd)/callgraph:/callgraph dynamic /bin/bash
 apt source zlib
 cd zlib-1.2.11.dfsg
 ./configure && make
 echo hello world | valgrind --tool=callgrind --callgrind-out-file=minigzip.txt ./minigzip
-gprof2dot -f callgrind -o graph.dot minigzip.txt
-dot2fasten minigzip graph.dot res.json -s $(pwd)/libz.a
+gprof2dot -f callgrind -n 0.0 -e 0.0 -o graph.dot minigzip.txt
+dot2fasten minigzip graph.dot res.json 
 cp res.json /callgraph/minigzip.json
 ```
 
@@ -33,8 +33,8 @@ pip3 install networkx pydot gprof2dot setuptools pygraphviz
 
 ```bash
 valgrind --tool=callgrind --callgrind-out-file=exec.txt ./exec
-gprof2dot -f callgrind -o graph.dot exec.txt
-dot2fasten minigzip graph.dot res.json 
+gprof2dot -f callgrind -n 0.0 -e 0.0 -o graph.dot minigzip.txt
+dot2fasten minigzip graph.dot res.json package
 ```
 
 Run with make test/check
@@ -85,4 +85,11 @@ Output format
 -------------
 
 ```json
+[
+  ["//libc6/ld-linux-x86-64.so;C/calloc()", "//libc6/ld-linux-x86-64.so;C/malloc()"], 
+  ["//zlib/minigzip;C/deflateEnd()", "//zlib/minigzip;C/zcfree()"], 
+  ["//zlib/minigzip;C/deflateInit2_()", "//zlib/minigzip;C/deflateResetKeep()"], 
+  ["//zlib/minigzip;C/gz_compress()", "//libc6/libc.so;C/ferror()"],
+  ["//zlib/minigzip;C/zcfree()", "//libc6/ld-linux-x86-64.so;C/free()"]
+]
 ```
