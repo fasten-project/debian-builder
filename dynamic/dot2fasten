@@ -199,8 +199,6 @@ def update_funcs_from_bin(funcs, binary):
 def create_uri(product, binary, func_name, only_fun_name=False):
     if only_fun_name:
         return func_name
-    if product == '':
-        return "/{};C/{}()".format(binary, func_name)
     return "//{}/{};C/{}()".format(product, binary, func_name)
 
 
@@ -228,6 +226,7 @@ def parse_args():
     parser.add_argument("binary", help="Analyzed binary")
     parser.add_argument("input_dot")
     parser.add_argument("output_json")
+    parser.add_argument("package")
     return parser.parse_args()
 
 
@@ -247,6 +246,8 @@ def main():
     for edge in edges:
         binary1, product1 = funcs_lookup.get(edge[0], (None, None))
         binary2, product2 = funcs_lookup.get(edge[1], (None, None))
+        product1 = args.package if not product1 else product1
+        product2 = args.package if not product2 else product2
         if not binary1 or not binary2:
             not_found_counter += 1
             continue
