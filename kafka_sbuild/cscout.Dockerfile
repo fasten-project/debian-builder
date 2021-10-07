@@ -23,7 +23,9 @@
 #
 FROM schaliasos/sbuild-cscout:latest
 
-RUN sudo apt -yqq update && sudo apt -yqq install libcurl4-openssl-dev libssl-dev
+COPY sources.list /etc/apt/sources.list
+RUN sudo apt-get -yqq update \
+ && sudo apt-get -yqq install libcurl4-openssl-dev libssl-dev
 RUN pip3 install requests BeautifulSoup4 kafka-python fasten pycurl
 RUN sudo pip3 install requests BeautifulSoup4 kafka-python fasten pycurl
 
