@@ -16,7 +16,7 @@ docker build -t kafka-cscout -f cscout.Dockerfile .
 Dockerhub images
 ----------------
 
-* svf: `schaliasos/kafka-svf:latest`
+* svf: `schaliasos/kafka_svf:latest`
 * cscout: `schaliasos/kafka-cscout:latest`
 
 How to run
@@ -54,7 +54,7 @@ optional arguments:
 For example:
 
 ```bash
-docker run -it --net=host --privileged schaliasos/kafka-svf \
+docker run -it --net=host --privileged schaliasos/kafka_svf \
     -i cf_deb_release -o cf_fasten_cg -e cf_errors -l cf_logs -b localhost:9092 -g group-1 -s 60
 ```
 

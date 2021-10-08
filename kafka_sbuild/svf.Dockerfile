@@ -21,7 +21,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM schaliasos/sbuild-svf:latest
+FROM schaliasos/sbuild_svf:latest
 
 COPY sources.list /etc/apt/sources.list
 RUN sudo apt -yqq update && sudo apt -yqq install libcurl4-openssl-dev libssl-dev
