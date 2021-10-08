@@ -71,8 +71,7 @@ class IntermediatePluginError(Exception):
 def create_dir(dir_name):
     """Safely create directory package-version.
     """
-    if not os.path.exists(dir_name):
-        os.makedirs(dir_name)
+    os.makedirs(dir_name, exist_ok = True)
     return dir_name
 
 
@@ -695,6 +694,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
             message = self.create_message(self.state.record, {"status": "failed"})
             self.emit_message(self.log_topic, message, "failed", "")
         os.chdir(self.state.old_cwd)
+        self.flush_logs()
         self._cleanup()
         # End
         self.state = None

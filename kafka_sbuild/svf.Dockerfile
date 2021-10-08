@@ -23,6 +23,7 @@
 #
 FROM schaliasos/sbuild-svf:latest
 
+COPY sources.list /etc/apt/sources.list
 RUN sudo apt -yqq update && sudo apt -yqq install libcurl4-openssl-dev libssl-dev
 RUN pip3 install requests BeautifulSoup4 kafka-python fasten pycurl
 RUN sudo pip3 install requests BeautifulSoup4 kafka-python fasten pycurl
