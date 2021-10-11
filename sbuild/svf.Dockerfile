@@ -32,6 +32,8 @@ ENV llvm_linker_etc="libfuzzer-7-dev lldb-7 lld-7 libc++-7-dev libc++abi-7-dev l
 ENV python_deps="python3 python3-pip python3-dev graphviz-dev"
 
 # INSTALL PACKAGES
+COPY sources.list /etc/apt/sources.list
+
 RUN apt -yqq update && apt -yqq upgrade && \
     apt install -yqq $build_deps $svf_deps $llvm_deps $clang_deps $llvm_linker_etc $python_deps
 

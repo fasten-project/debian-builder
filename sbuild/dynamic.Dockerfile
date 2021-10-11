@@ -28,6 +28,8 @@ USER root
 ENV deps="graphviz libgraphviz-dev valgrind binutils python3 python3-pip"
 ENV pip_deps="networkx pydot gprof2dot setuptools pygraphviz"
 
+COPY sources.list /etc/apt/sources.list
+
 RUN apt -yqq update && apt -yqq upgrade && apt install -yqq $deps
 RUN pip3 install setuptools pygraphviz networkx
 
