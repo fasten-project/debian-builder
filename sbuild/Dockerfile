@@ -36,6 +36,7 @@ RUN echo "%sudo  ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 # INSTALL sbuild
 RUN sbuild-adduser root && \
     sbuild-adduser builder && \
+    sbuild-createchroot --include=eatmydata,ccache,gnupg bullseye /srv/chroot/bullseye-amd64-sbuild http://deb.debian.org/debian && \
     sbuild-createchroot --include=eatmydata,ccache,gnupg stable /srv/chroot/stable-amd64-sbuild http://deb.debian.org/debian && \
     sbuild-createchroot --include=eatmydata,ccache,gnupg buster /srv/chroot/buster-amd64-sbuild http://deb.debian.org/debian && \
     sbuild-createchroot --include=eatmydata,ccache,gnupg stretch /srv/chroot/stretch-amd64-sbuild http://deb.debian.org/debian

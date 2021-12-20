@@ -13,7 +13,7 @@ Build
 -----
 
 ```
-docker build -t sbuild .
+docker build --no-cache -t sbuild .
 docker build -t sbuild-svf -f svf.Dockerfile .
 docker build -t sbuild-cscout -f cscout.Dockerfile .
 docker build -t sbuild-dynamic -f dynamic.Dockerfile .
