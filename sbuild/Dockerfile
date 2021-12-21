@@ -21,7 +21,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM debian:stable
+FROM debian:buster
 
 ENV dev="git make vim wget python3 python3-pip sudo"
 ENV sbuild="sbuild schroot debootstrap"
