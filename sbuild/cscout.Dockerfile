@@ -21,7 +21,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM schaliasos/sbuild:latest
+FROM docker.pkg.github.com/fasten-project/debian-builder/fasten.debian_builder_sbuild_buster:latest
 
 USER root
 

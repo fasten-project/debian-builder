@@ -1,11 +1,11 @@
-name: Publish Docker image
+name: Publish Docker Image of Sbuild Cscout for Debian Buster Releases
 
 on:
   push:
     branches:
       - main
 env:
-  IMAGE_NAME: fasten.debian_builder_svf_buster
+  IMAGE_NAME: fasten.debian_builder_sbuild_cscout_buster
 
 jobs:
   push:
@@ -16,12 +16,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Build Docker image
-        working-directory: ./sbuild
-        run: docker build --no-cache -t $IMAGE_NAME .
-
       - name: Log into registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Build Docker image
+        working-directory: ./sbuild
+        run: docker build -t $IMAGE_NAME -f cscout.Dockerfile .
 
       - name: Push image
         run: |
