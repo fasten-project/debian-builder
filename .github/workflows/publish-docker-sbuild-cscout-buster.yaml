@@ -21,7 +21,7 @@ jobs:
 
       - name: Build Docker image
         working-directory: ./sbuild
-        run: docker build -t $IMAGE_NAME -f cscout.Dockerfile .
+        run: docker build -t $IMAGE_NAME -f cscout_buster.Dockerfile .
 
       - name: Push image
         run: |
