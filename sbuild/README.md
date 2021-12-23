@@ -3,7 +3,7 @@
 This is an unofficial Docker image of
 [sbuild](https://tracker.debian.org/pkg/sbuild).
 You can run sbuild as a Docker container to build Debian binary packages
-from Debian sources. It supports the releases; buster, stretch and unstable.
+from Debian sources. It supports the releases;bullseye, buster, stretch and unstable.
 Moreover, two extensions of the sbuild image are provided to generate call
 graphs. One using [svf](https://svf-tools.github.io/SVF/),
 and the other one using
@@ -13,9 +13,9 @@ Build
 -----
 
 ```
-docker build --no-cache -t sbuild .
+docker build --no-cache -t sbuild_buster .
 docker build -t sbuild-svf -f svf.Dockerfile .
-docker build -t sbuild-cscout -f cscout.Dockerfile .
+docker build -t sbuild-cscout -f cscout_buster.Dockerfile .
 docker build -t sbuild-dynamic -f dynamic.Dockerfile .
 ```
 

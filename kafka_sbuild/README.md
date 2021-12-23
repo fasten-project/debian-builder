@@ -10,7 +10,7 @@ Build Images
 
 ```bash
 docker build -t kafka-svf -f svf.Dockerfile .
-docker build -t kafka-cscout -f cscout.Dockerfile .
+docker build -t kafka-cscout -f cscout_buster.Dockerfile .
 ```
 
 Dockerhub images
@@ -18,6 +18,12 @@ Dockerhub images
 
 * svf: `schaliasos/kafka_svf:latest`
 * cscout: `schaliasos/kafka-cscout:latest`
+
+Github Packages Images
+----------------------
+For buster release: `docker.pkg.github.com/fasten-project/debian-builder/kafka-cscout-buster:latest`
+
+For bullseye release: `docker.pkg.github.com/fasten-project/debian-builder/kafka-cscout-bullseye:latest`
 
 How to run
 ----------
