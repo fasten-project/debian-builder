@@ -21,14 +21,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM schaliasos/sbuild-cscout:latest
+FROM docker.pkg.github.com/fasten-project/debian-builder/fasten.debian_builder_sbuild_cscout_buster:latest
 
 COPY sources.list /etc/apt/sources.list
 RUN sudo apt-get -yqq update \
- && sudo apt-get -yqq install libcurl4-openssl-dev libssl-dev
-RUN pip3 install requests BeautifulSoup4 kafka-python fasten pycurl
-RUN sudo pip3 install requests BeautifulSoup4 kafka-python fasten pycurl
-
+ && sudo apt-get -yqq install libcurl4-openssl-dev libssl-dev python3-pycurl
+RUN pip3 install requests BeautifulSoup4 kafka-python fasten 
+RUN sudo pip3 install requests BeautifulSoup4 kafka-python fasten
 # DIRECTORY TO SAVE DEBUG FILES
 run mkdir -p /home/builder/debug
 RUN chown -R builder /home/builder/debug
