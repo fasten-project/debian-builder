@@ -386,9 +386,9 @@ class PackageState():
             pkg[0], pkg, self.dist, self.version, self.arch
         )
 
-    def get_sources_dst(self, pkg):
+    def get_sources_dst(self):
         return "sources/{}/{}/{}".format(
-            pkg[0], pkg, self.version
+            self.source[0], self.source, self.version
         )
 
 
@@ -657,7 +657,7 @@ class CScoutKafkaPlugin(KafkaPlugin):
         if self.directory != '':
             cg_dst = os.path.join(self.directory, self.state.get_cg_dst(pkg))
             cg_dst = os.path.join(cg_dst, "file.json")
-            sources_dst = os.path.join(self.directory, self.state.get_sources_dst(pkg))
+            sources_dst = os.path.join(self.directory, self.state.get_sources_dst())
             message = self.create_message(
                 self.state.record,
                 {"payload": {
